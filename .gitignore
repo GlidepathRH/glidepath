@@ -19,3 +19,5 @@ contracts/deployer-keystore/
 *.log
 .DS_Store
 /our-progress.md
+/.audit-grade/runs/
+/.solidity-auditor/

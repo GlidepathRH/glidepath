@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {GlidepathHook} from "../src/GlidepathHook.sol";
 import {GlidepathLaunchFactory} from "../src/GlidepathLaunchFactory.sol";
 import {GlidepathSnipe} from "../src/GlidepathSnipe.sol";
@@ -173,6 +174,63 @@ contract GlidepathLaunchTest is Test {
         assertEq(factory.tokenForPool(nativePoolId), nativeToken);
         assertGt(GlidepathToken(nativeToken).balanceOf(address(this)), 0);
         assertLt(address(this).balance, balanceBefore);
+    }
+
+    function testCreatorFirstBuyIsInLaunchTransactionAndDisclosed() public {
+        GlidepathSnipe.Config memory longSnipe =
+            GlidepathSnipe.Config({mode: GlidepathSnipe.Mode.Long, startPips: 250_000, durationSeconds: 30});
+        GlidepathLaunchFactory.CreateParams memory params = _createParams(longSnipe, address(quote));
+        params.name = "Creator Buy";
+        params.symbol = "CBUY";
+        params.creatorFirstBuyTokenAmount = 100 ether;
+        params.creatorFirstBuyQuoteBudget = 200 ether;
+        quote.approve(address(factory), params.quoteAmount + params.creatorFirstBuyQuoteBudget);
+
+        vm.recordLogs();
+        (address createdToken, PoolId createdPoolId) = factory.createLaunch(params);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        assertEq(GlidepathToken(createdToken).totalSupply(), TOKEN_SUPPLY);
+        assertGt(GlidepathToken(createdToken).balanceOf(address(this)), TOKEN_SUPPLY - LIQUIDITY_BUDGET);
+        assertEq(hook.buyTaxNow(createdPoolId), 250_000);
+        assertGt(hook.claimable(address(quote), address(this)), 0);
+        assertGt(hook.claimable(address(quote), CREATOR_PAYOUT), 0);
+
+        bytes32 eventSignature = keccak256("CreatorFirstBuy(address,address,uint256,uint256)");
+        bool disclosed;
+        for (uint256 i; i < logs.length; ++i) {
+            if (
+                logs[i].emitter == address(factory) && logs[i].topics.length == 3 && logs[i].topics[0] == eventSignature
+            ) {
+                assertEq(logs[i].topics[1], bytes32(uint256(uint160(createdToken))));
+                assertEq(logs[i].topics[2], bytes32(uint256(uint160(address(this)))));
+                (uint256 tokenAmount, uint256 quoteAmount) = abi.decode(logs[i].data, (uint256, uint256));
+                assertEq(tokenAmount, params.creatorFirstBuyTokenAmount);
+                assertGt(quoteAmount, 0);
+                assertLt(quoteAmount, params.creatorFirstBuyQuoteBudget);
+                disclosed = true;
+            }
+        }
+        assertTrue(disclosed);
+    }
+
+    function testCreatorFirstBuyCannotExceedFivePercentOfSupply() public {
+        GlidepathLaunchFactory.CreateParams memory params = _createParams(_offSnipe(), address(quote));
+        params.creatorFirstBuyTokenAmount = TOKEN_SUPPLY / 20 + 1;
+        params.creatorFirstBuyQuoteBudget = 1 ether;
+        quote.approve(address(factory), params.quoteAmount + params.creatorFirstBuyQuoteBudget);
+        vm.expectRevert(GlidepathLaunchFactory.InvalidCreatorFirstBuy.selector);
+        factory.createLaunch(params);
+    }
+
+    function testCreatorFirstBuyRequiresTradingToBeOpen() public {
+        GlidepathLaunchFactory.CreateParams memory params = _createParams(_offSnipe(), address(quote));
+        params.creatorFirstBuyTokenAmount = 1 ether;
+        params.creatorFirstBuyQuoteBudget = 2 ether;
+        params.tradingOpensAt = uint64(block.timestamp + 1);
+        quote.approve(address(factory), params.quoteAmount + params.creatorFirstBuyQuoteBudget);
+        vm.expectRevert(GlidepathLaunchFactory.InvalidCreatorFirstBuy.selector);
+        factory.createLaunch(params);
     }
 
     function testInitialPriceCannotCreateOneSidedLaunchLiquidity() public {

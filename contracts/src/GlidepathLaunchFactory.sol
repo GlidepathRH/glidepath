@@ -38,6 +38,7 @@ contract GlidepathLaunchFactory is IUnlockCallback {
     error NativeRefundFailed();
     error LaunchFeeTransferFailed();
     error ReentrantLaunch();
+    error InvalidCreatorFirstBuy();
 
     event LaunchCreated(
         address indexed token,
@@ -47,14 +48,19 @@ contract GlidepathLaunchFactory is IUnlockCallback {
         uint256 totalSupply,
         uint256 liquidityTokenAmount,
         uint256 liquidityQuoteAmount,
+        uint256 creatorFirstBuyTokenAmount,
+        uint256 creatorFirstBuyQuoteAmount,
         uint160 sqrtPriceX96
     );
+    event CreatorFirstBuy(address indexed token, address indexed creator, uint256 tokenAmount, uint256 quoteAmount);
 
     struct CreateParams {
         string name;
         string symbol;
         uint256 totalSupply;
         uint256 liquidityTokenAmount;
+        uint256 creatorFirstBuyTokenAmount;
+        uint256 creatorFirstBuyQuoteBudget;
         address quoteCurrency;
         uint256 quoteAmount;
         uint160 sqrtPriceX96;
@@ -73,6 +79,8 @@ contract GlidepathLaunchFactory is IUnlockCallback {
         Currency currency1;
         uint256 tokenBudget;
         uint256 quoteBudget;
+        uint256 firstBuyTokenAmount;
+        uint256 firstBuyQuoteBudget;
         bool tokenIsCurrency0;
     }
 
@@ -116,6 +124,15 @@ contract GlidepathLaunchFactory is IUnlockCallback {
                 || params.sqrtPriceX96 <= TickMath.MIN_SQRT_PRICE || params.sqrtPriceX96 >= TickMath.MAX_SQRT_PRICE
                 || bytes(params.name).length == 0 || bytes(params.symbol).length == 0
         ) revert InvalidLaunchParameters();
+        if (
+            (params.creatorFirstBuyTokenAmount == 0) != (params.creatorFirstBuyQuoteBudget == 0)
+                || params.creatorFirstBuyTokenAmount > params.totalSupply / 20
+                || params.creatorFirstBuyTokenAmount > uint256(type(int256).max)
+                || (params.creatorFirstBuyTokenAmount != 0 && params.tradingOpensAt > block.timestamp)
+        ) revert InvalidCreatorFirstBuy();
+
+        uint256 totalQuoteBudget = params.quoteAmount + params.creatorFirstBuyQuoteBudget;
+        if (totalQuoteBudget < params.quoteAmount) revert InvalidLaunchParameters();
 
         token = address(new GlidepathToken(params.name, params.symbol, params.totalSupply, address(this)));
         Currency tokenCurrency = Currency.wrap(token);
@@ -123,14 +140,14 @@ contract GlidepathLaunchFactory is IUnlockCallback {
         if (tokenCurrency == quoteCurrency) revert InvalidLaunchParameters();
 
         if (quoteCurrency.isAddressZero()) {
-            if (params.quoteAmount > type(uint256).max - launchFee) revert InvalidLaunchParameters();
-            uint256 expectedValue = params.quoteAmount + launchFee;
+            if (totalQuoteBudget > type(uint256).max - launchFee) revert InvalidLaunchParameters();
+            uint256 expectedValue = totalQuoteBudget + launchFee;
             if (msg.value != expectedValue) revert InvalidNativeValue(expectedValue, msg.value);
         } else {
             if (msg.value != launchFee || params.quoteCurrency.code.length == 0) {
                 revert InvalidNativeValue(launchFee, msg.value);
             }
-            _safeTransferFrom(params.quoteCurrency, msg.sender, address(this), params.quoteAmount);
+            _safeTransferFrom(params.quoteCurrency, msg.sender, address(this), totalQuoteBudget);
         }
         if (launchFee != 0) {
             (bool feePaid,) = platformTreasury.call{value: launchFee}("");
@@ -168,23 +185,26 @@ contract GlidepathLaunchFactory is IUnlockCallback {
             currency1: currency1,
             tokenBudget: params.liquidityTokenAmount,
             quoteBudget: params.quoteAmount,
+            firstBuyTokenAmount: params.creatorFirstBuyTokenAmount,
+            firstBuyQuoteBudget: params.creatorFirstBuyQuoteBudget,
             tokenIsCurrency0: tokenIsCurrency0
         });
         bytes memory result = poolManager.unlock(abi.encode(key, params.sqrtPriceX96));
-        (uint256 usedToken, uint256 usedQuote) = abi.decode(result, (uint256, uint256));
+        (uint256 usedToken, uint256 usedQuote, uint256 firstBuyQuoteSpent) =
+            abi.decode(result, (uint256, uint256, uint256));
         if (usedToken == 0 || usedQuote == 0) revert InvalidLaunchParameters();
         delete _activeLaunch;
 
         uint256 creatorTokenAmount = params.totalSupply - usedToken;
         _safeTransfer(token, msg.sender, creatorTokenAmount);
         if (quoteCurrency.isAddressZero()) {
-            uint256 refund = params.quoteAmount - usedQuote;
+            uint256 refund = totalQuoteBudget - usedQuote - firstBuyQuoteSpent;
             if (refund != 0) {
                 (bool refunded,) = msg.sender.call{value: refund}("");
                 if (!refunded) revert NativeRefundFailed();
             }
         } else {
-            uint256 refund = params.quoteAmount - usedQuote;
+            uint256 refund = totalQuoteBudget - usedQuote - firstBuyQuoteSpent;
             if (refund != 0) _safeTransfer(params.quoteCurrency, msg.sender, refund);
         }
 
@@ -197,8 +217,13 @@ contract GlidepathLaunchFactory is IUnlockCallback {
             params.totalSupply,
             usedToken,
             usedQuote,
+            params.creatorFirstBuyTokenAmount,
+            firstBuyQuoteSpent,
             params.sqrtPriceX96
         );
+        if (params.creatorFirstBuyTokenAmount != 0) {
+            emit CreatorFirstBuy(token, msg.sender, params.creatorFirstBuyTokenAmount, firstBuyQuoteSpent);
+        }
     }
 
     /// @inheritdoc IUnlockCallback
@@ -232,7 +257,55 @@ contract GlidepathLaunchFactory is IUnlockCallback {
         uint256 used1 = _settleDelta(key.currency1, delta.amount1(), _budgetFor(launch, key.currency1));
         uint256 usedToken = launch.tokenIsCurrency0 ? used0 : used1;
         uint256 usedQuote = launch.tokenIsCurrency0 ? used1 : used0;
-        return abi.encode(usedToken, usedQuote);
+
+        uint256 firstBuyQuoteSpent;
+        if (launch.firstBuyTokenAmount != 0) {
+            (uint256 tokenOutput, uint256 quoteInput) = _executeCreatorFirstBuy(key, launch);
+            if (tokenOutput != launch.firstBuyTokenAmount) revert InvalidCreatorFirstBuy();
+            if (quoteInput > launch.firstBuyQuoteBudget) {
+                revert LiquidityBudgetExceeded(
+                    Currency.unwrap(launch.currency1), quoteInput, launch.firstBuyQuoteBudget
+                );
+            }
+            firstBuyQuoteSpent = quoteInput;
+        }
+        return abi.encode(usedToken, usedQuote, firstBuyQuoteSpent);
+    }
+
+    function _executeCreatorFirstBuy(PoolKey memory key, ActiveLaunch memory launch)
+        private
+        returns (uint256 tokenOutput, uint256 quoteInput)
+    {
+        bool zeroForOne = !launch.tokenIsCurrency0;
+        BalanceDelta delta = poolManager.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: zeroForOne,
+                amountSpecified: int256(launch.firstBuyTokenAmount),
+                sqrtPriceLimitX96: zeroForOne ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
+            }),
+            ""
+        );
+
+        int128 tokenDelta = _currencyDelta(delta, key, Currency.wrap(launch.token));
+        int128 quoteDelta = _currencyDelta(delta, key, launch.tokenIsCurrency0 ? key.currency1 : key.currency0);
+        if (tokenDelta <= 0 || quoteDelta >= 0) revert InvalidCreatorFirstBuy();
+        tokenOutput = uint256(uint128(tokenDelta));
+        quoteInput = uint256(-int256(quoteDelta));
+        if (quoteInput > launch.firstBuyQuoteBudget) {
+            revert LiquidityBudgetExceeded(
+                Currency.unwrap(launch.tokenIsCurrency0 ? key.currency1 : key.currency0),
+                quoteInput,
+                launch.firstBuyQuoteBudget
+            );
+        }
+
+        _settleDelta(launch.tokenIsCurrency0 ? key.currency1 : key.currency0, quoteDelta, launch.firstBuyQuoteBudget);
+        poolManager.take(Currency.wrap(launch.token), launch.creator, tokenOutput);
+    }
+
+    function _currencyDelta(BalanceDelta delta, PoolKey memory key, Currency currency) private pure returns (int128) {
+        return Currency.unwrap(currency) == Currency.unwrap(key.currency0) ? delta.amount0() : delta.amount1();
     }
 
     function _settleDelta(Currency currency, int128 delta, uint256 budget) private returns (uint256 amount) {
