@@ -16,10 +16,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile --ignore-scripts
       - run: bun run check
+      - name: Build production image
+        run: docker build --tag glidepath-backend:ci .
 
   deploy:
     needs: check
-    if: github.repository == 'NotADeveloper7/glidepath' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.repository == 'GlidepathRH/glidepath' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Render deployment when configured
