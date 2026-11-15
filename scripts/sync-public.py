@@ -65,6 +65,8 @@ def is_private_path(line: bytes) -> bool:
         normalized = path.strip(b'"')
         if normalized == b"technical-docs" or normalized.startswith(b"technical-docs/"):
             return True
+        if normalized == b"our-progress.md":
+            return True
         name = normalized.rsplit(b"/", 1)[-1]
         if name == b".env" or (
             name.startswith(b".env.") and not name.endswith(b".example")

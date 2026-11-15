@@ -18,3 +18,4 @@ contracts/deployer-keystore/
 *.pem
 *.log
 .DS_Store
+/our-progress.md
