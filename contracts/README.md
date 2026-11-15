@@ -1,5 +1,9 @@
 # Contracts
 
+## Contract release names
+
+Contract releases use periodic-table element names in increasing atomic-number order. The first deployed release is **Hydrogen (H, element 1)**. The next distinct contract release is Helium (He, 2), then Lithium (Li, 3), and so on. Never reuse an element name for a different release. A redeployment of the same source release on another network keeps its name; record the network separately. The element name is a human-readable release codename, while the source commit and deployed bytecode remain the authoritative version identifiers. Record every deployment in `deployments/` with its release name, chain ID, source commit, addresses, and transaction hashes.
+
 Foundry workspace for Glidepath's Uniswap v4 hook and launch contracts on Robinhood Chain (chain ID 4663).
 
 The stage-one tax path, anti-snipe schedule, and fee split rules are in `src/GlidepathTaxPath.sol`, `src/GlidepathSnipe.sol`, and `src/GlidepathFeeMath.sol`. `src/GlidepathHook.sol` applies those rules to PoolManager swaps and blocks swaps until the configured open time. Stage-one contract scope excludes market-cap milestones, hidden launch, opening batches, holder rewards, and the $GLIDE utility token.
