@@ -25,6 +25,7 @@ contract GlidepathHook is IHooks {
     error NotPoolManager();
     error NotLaunchFactory();
     error NotCreator();
+    error SnipeAlreadyEnded();
     error PoolAlreadyRegistered(PoolId poolId);
     error UnknownPool(PoolId poolId);
     error InvalidPoolKey();
@@ -37,11 +38,13 @@ contract GlidepathHook is IHooks {
     error FeeDeltaTooLarge(uint256 amount);
     error NothingToClaim();
     error ReentrantClaim();
+    error ReentrantSwap();
     error UnexpectedNativeTransfer();
     error UnsupportedHookCallback();
 
     event PoolRegistered(PoolId indexed poolId, address indexed creator, address token, address quoteCurrency);
     event CreatorTaxCeilingLowered(PoolId indexed poolId, bool indexed isBuy, uint24 previousPips, uint24 newPips);
+    event SnipeEndedEarly(PoolId indexed poolId, address indexed creator);
     event FeeAccrued(
         PoolId indexed poolId,
         address indexed quoteCurrency,
@@ -64,6 +67,7 @@ contract GlidepathHook is IHooks {
         uint24 creatorBuyCeilingPips;
         uint24 creatorSellCeilingPips;
         GlidepathSnipe.Config snipe;
+        bool snipeEnded;
         address[3] payoutRecipients;
         uint16[3] payoutWeightsBps;
         uint8 lastPayoutRecipient;
@@ -82,6 +86,7 @@ contract GlidepathHook is IHooks {
     mapping(PoolId poolId => PendingQuoteSwap pending) private _pendingQuoteSwaps;
     mapping(address currency => mapping(address recipient => uint256 amount)) public claimable;
     uint256 private _claimLock = 1;
+    uint256 private _swapLock = 1;
 
     constructor(IPoolManager poolManager_, address launchFactory_, address platformTreasury_) {
         if (address(poolManager_) == address(0) || launchFactory_ == address(0) || platformTreasury_ == address(0)) {
@@ -203,13 +208,20 @@ contract GlidepathHook is IHooks {
         emit CreatorTaxCeilingLowered(poolId, isBuy, current, newCeilingPips);
     }
 
+    /// @notice Creator can end an active snipe window early, but cannot extend it.
+    function endSnipeEarly(PoolId poolId) external {
+        LaunchConfig storage config = _launch(poolId);
+        if (msg.sender != config.creator) revert NotCreator();
+        if (config.snipeEnded || config.snipe.mode == GlidepathSnipe.Mode.Off) revert SnipeAlreadyEnded();
+        config.snipeEnded = true;
+        emit SnipeEndedEarly(poolId, msg.sender);
+    }
+
     /// @notice Current buy tax, including an active snipe overlay.
     function buyTaxNow(PoolId poolId) external view returns (uint24) {
         LaunchConfig storage config = _launch(poolId);
         uint24 normal = _normalTax(config, true, uint64(block.timestamp));
-        return GlidepathSnipe.effectiveBuyTax(
-            config.snipe, config.tradingOpensAt, uint64(block.timestamp), normal
-        );
+        return _buyTax(config, normal, uint64(block.timestamp));
     }
 
     /// @notice Current sell tax. Snipe protection is buy-only.
@@ -277,6 +289,8 @@ contract GlidepathHook is IHooks {
         IPoolManager.SwapParams calldata params,
         bytes calldata
     ) external onlyPoolManager returns (bytes4, BeforeSwapDelta, uint24) {
+        if (_swapLock != 1) revert ReentrantSwap();
+        _swapLock = 2;
         PoolId poolId = key.toId();
         LaunchConfig storage config = _launch(poolId);
         if (block.timestamp < config.tradingOpensAt) {
@@ -285,9 +299,7 @@ contract GlidepathHook is IHooks {
         bool isBuy = _isBuy(config, key, params.zeroForOne);
         uint64 timestamp = uint64(block.timestamp);
         uint24 normalTax = _normalTax(config, isBuy, timestamp);
-        uint24 appliedTax = isBuy
-            ? GlidepathSnipe.effectiveBuyTax(config.snipe, config.tradingOpensAt, timestamp, normalTax)
-            : normalTax;
+        uint24 appliedTax = isBuy ? _buyTax(config, normalTax, timestamp) : normalTax;
         bool snipeTax = isBuy && appliedTax > normalTax;
         uint24 totalFeePips = isBuy
             ? GlidepathFeeMath.totalBuyFeePips(normalTax, appliedTax)
@@ -325,6 +337,7 @@ contract GlidepathHook is IHooks {
         BalanceDelta delta,
         bytes calldata
     ) external onlyPoolManager returns (bytes4, int128) {
+        if (_swapLock != 2) revert ReentrantSwap();
         PoolId poolId = key.toId();
         LaunchConfig storage config = _launch(poolId);
         PendingQuoteSwap memory pending = _pendingQuoteSwaps[poolId];
@@ -340,19 +353,19 @@ contract GlidepathHook is IHooks {
             }
             // beforeSwap charged the requested amount. Reject a partial fill so
             // this cannot charge against quote value that did not trade.
+            _swapLock = 1;
             return (IHooks.afterSwap.selector, 0);
         }
 
         if (Currency.unwrap(unspecifiedCurrency) != Currency.unwrap(config.quoteCurrency)) {
+            _swapLock = 1;
             return (IHooks.afterSwap.selector, 0);
         }
 
         bool isBuy = _isBuy(config, key, params.zeroForOne);
         uint64 timestamp = uint64(block.timestamp);
         uint24 normalTax = _normalTax(config, isBuy, timestamp);
-        uint24 appliedTax = isBuy
-            ? GlidepathSnipe.effectiveBuyTax(config.snipe, config.tradingOpensAt, timestamp, normalTax)
-            : normalTax;
+        uint24 appliedTax = isBuy ? _buyTax(config, normalTax, timestamp) : normalTax;
         bool snipeTax = isBuy && appliedTax > normalTax;
         uint24 totalFeePips = isBuy
             ? GlidepathFeeMath.totalBuyFeePips(normalTax, appliedTax)
@@ -364,6 +377,7 @@ contract GlidepathHook is IHooks {
             poolId, config, quoteAmount, appliedTax, snipeTax, totalFeePips, false
         );
         if (totalAmount > uint128(type(int128).max)) revert FeeDeltaTooLarge(totalAmount);
+        _swapLock = 1;
         return (IHooks.afterSwap.selector, int128(totalAmount));
     }
 
@@ -464,6 +478,15 @@ contract GlidepathHook is IHooks {
         return GlidepathTaxPath.effectiveRate(
             config.sellPath, config.tradingOpensAt, timestamp, config.creatorSellCeilingPips
         );
+    }
+
+    function _buyTax(LaunchConfig storage config, uint24 normalTax, uint64 timestamp)
+        private
+        view
+        returns (uint24)
+    {
+        if (config.snipeEnded) return normalTax;
+        return GlidepathSnipe.effectiveBuyTax(config.snipe, config.tradingOpensAt, timestamp, normalTax);
     }
 
     function _isBuy(LaunchConfig storage config, PoolKey calldata key, bool zeroForOne)
