@@ -116,13 +116,13 @@ def rewrite_export(stream: bytes) -> bytes:
     return bytes(output)
 
 
-def main() -> None:
-    run("git", "rev-parse", "--verify", SOURCE_BRANCH)
-    source_commit = run("git", "rev-parse", SOURCE_BRANCH).decode().strip()
-    exported = run("git", "fast-export", "--show-original-ids", SOURCE_BRANCH)
-    run("git", "fast-import", "--force", input_data=rewrite_export(exported))
-    public_commit = run("git", "rev-parse", f"refs/heads/{PUBLIC_BRANCH}").decode().strip()
-
+def fetch_public_main() -> str | None:
+    main_ref = run("git", "ls-remote", "--heads", PUBLIC_REMOTE, "refs/heads/main")
+    if not main_ref.strip():
+        other_refs = run("git", "ls-remote", "--heads", PUBLIC_REMOTE)
+        if other_refs.strip():
+            raise RuntimeError("Public remote has branches but no main; refusing to replace it")
+        return None
     run(
         "git",
         "fetch",
@@ -130,9 +130,19 @@ def main() -> None:
         PUBLIC_REMOTE,
         "+refs/heads/main:refs/remotes/public-origin/main",
     )
+    return run("git", "rev-parse", "--verify", "refs/remotes/public-origin/main").decode().strip()
+
+
+def main() -> None:
+    run("git", "rev-parse", "--verify", SOURCE_BRANCH)
+    source_commit = run("git", "rev-parse", SOURCE_BRANCH).decode().strip()
+    exported = run("git", "fast-export", "--show-original-ids", SOURCE_BRANCH)
+    run("git", "fast-import", "--force", input_data=rewrite_export(exported))
+    public_commit = run("git", "rev-parse", f"refs/heads/{PUBLIC_BRANCH}").decode().strip()
+
+    remote_tip = fetch_public_main()
     commits = run("git", "rev-list", "--reverse", "--first-parent", PUBLIC_BRANCH).decode().splitlines()
-    remote_tip = run("git", "rev-parse", "--verify", "refs/remotes/public-origin/main").decode().strip()
-    next_index = commits.index(remote_tip) + 1 if remote_tip in commits else 0
+    next_index = commits.index(remote_tip) + 1 if remote_tip and remote_tip in commits else 0
     batch_size = PUSH_BATCH_SIZE
 
     while next_index < len(commits):
@@ -141,15 +151,8 @@ def main() -> None:
         try:
             run("git", "push", PUBLIC_REMOTE, f"{batch[-1]}:refs/heads/main", *options)
         except SystemExit:
-            run(
-                "git",
-                "fetch",
-                "--no-tags",
-                PUBLIC_REMOTE,
-                "+refs/heads/main:refs/remotes/public-origin/main",
-            )
-            remote_tip = run("git", "rev-parse", "--verify", "refs/remotes/public-origin/main").decode().strip()
-            if remote_tip in commits:
+            remote_tip = fetch_public_main()
+            if remote_tip and remote_tip in commits:
                 next_index = commits.index(remote_tip) + 1
             if batch_size == 1:
                 raise
