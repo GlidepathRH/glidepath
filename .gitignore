@@ -21,3 +21,4 @@ contracts/deployer-keystore/
 /our-progress.md
 /.audit-grade/runs/
 /.solidity-auditor/
+/.audit-grade/
