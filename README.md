@@ -20,7 +20,7 @@ Glidepath is a token launchpad on Robinhood Chain (4663). A creator commits a po
 | API | Publish a queryable view of launches and their onchain tax paths |
 | Chain | Robinhood Chain, chain ID 4663; Uniswap v4 |
 
-The contract implementation is not complete. The current hook is an abstract scaffold and cannot be deployed.
+The first contract release, **Hydrogen (H)**, is deployed on Robinhood Chain. Deployment addresses, transactions, and the version naming convention are recorded under `/contracts/deployments` and in the contracts README. The backend provides a read-only launch and tax-path API.
 
 ## Repository layout
 
@@ -29,7 +29,6 @@ The contract implementation is not complete. The current hook is an abstract sca
 | `/src` | Vite + TanStack Start frontend |
 | `/backend` | Bun + Express + TypeScript API and PostgreSQL migration runner |
 | `/contracts` | Foundry workspace for the Uniswap v4 hook and launch contracts |
-| `/scripts/sync-public.py` | Rewrites private `main` history for the public repository |
 | `/.github/workflows` | Frontend, backend, and contract checks; optional Render hook |
 
 ## Getting started
@@ -46,7 +45,7 @@ bun run dev
 cd backend
 bun install
 cp .env.example .env
-# Set DATABASE_URL and RHC_RPC_URL, then:
+# Set DATABASE_URL, RHC_RPC_URL, and FRONTEND_URL, then:
 bun run dev
 
 # Contracts
@@ -55,15 +54,13 @@ cp .env.example .env
 forge build
 ```
 
-The first contract task is to pin Uniswap v4 core/periphery dependencies and implement the hook. Do not deploy the current abstract contract scaffold.
+The backend indexes launch and pool events from the deployed Hydrogen factory and hook, then serves launch details and current taxes through its read-only API.
 
 ## Deployment
 
 - **Frontend:** Vercel, connected to the private `NotADeveloper7/glidepath` repository.
 - **Backend:** Render, rooted at `/backend`; set `DATABASE_URL`, `RHC_RPC_URL`, `FRONTEND_URL`, and the platform `PORT`. The optional workflow deploy hook uses `RENDER_DEPLOY_HOOK_URL`.
-- **Contracts:** Robinhood Chain deployment is not configured yet. Set the target PoolManager and review the contract implementation before creating deployment scripts.
-
-The local `origin` should point to the private repository and `public-origin` to `GlidepathRH/glidepath`. Never put PATs in source files; the sync script uses those local Git remotes.
+- **Contracts:** deployed on Robinhood Chain; see `contracts/deployments/robinhood-mainnet.json` for the contract and treasury addresses.
 
 ## Stack
 
