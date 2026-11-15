@@ -1,0 +1,32 @@
+name: Backend
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run check
+
+  deploy:
+    needs: check
+    if: github.repository == 'NotADeveloper7/glidepath' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deployment when configured
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL is not set; skipping deployment."
+            exit 0
+          fi
+          curl --fail --silent --show-error --max-time 20 "$RENDER_DEPLOY_HOOK_URL" || echo "Render hook did not respond; deployment can be retried in Render."
