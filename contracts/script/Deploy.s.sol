@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.26;
 
 interface VmDeploy {
     function envUint(string calldata name) external view returns (uint256 value);
@@ -14,6 +14,8 @@ interface VmDeploy {
 
 contract GlidepathCreate2Deployer {
     error Create2DeploymentFailed();
+    error CreateDeploymentFailed();
+    error FactoryAddressPredictionFailed(address expected, address actual);
     error NotDeployer();
 
     address public immutable deployer;
@@ -22,22 +24,24 @@ contract GlidepathCreate2Deployer {
         deployer = deployer_;
     }
 
-    function deploy(bytes calldata initCode, bytes32 salt) external returns (address deployed) {
+    function deployPair(
+        bytes calldata hookInitCode,
+        bytes32 hookSalt,
+        bytes calldata factoryInitCode,
+        address expectedFactory
+    ) external returns (address hook, address factory) {
         if (msg.sender != deployer) revert NotDeployer();
-        bytes memory code = initCode;
+        bytes memory hookCode = hookInitCode;
         assembly ("memory-safe") {
-            deployed := create2(0, add(code, 0x20), mload(code), salt)
+            hook := create2(0, add(hookCode, 0x20), mload(hookCode), hookSalt)
         }
-        if (deployed == address(0)) revert Create2DeploymentFailed();
-    }
-
-    function deployCreate(bytes calldata initCode) external returns (address deployed) {
-        if (msg.sender != deployer) revert NotDeployer();
-        bytes memory code = initCode;
+        if (hook == address(0)) revert Create2DeploymentFailed();
+        bytes memory factoryCode = factoryInitCode;
         assembly ("memory-safe") {
-            deployed := create(0, add(code, 0x20), mload(code))
+            factory := create(0, add(factoryCode, 0x20), mload(factoryCode))
         }
-        if (deployed == address(0)) revert Create2DeploymentFailed();
+        if (factory == address(0)) revert CreateDeploymentFailed();
+        if (factory != expectedFactory) revert FactoryAddressPredictionFailed(expectedFactory, factory);
     }
 }
 
@@ -45,12 +49,14 @@ contract GlidepathCreate2Deployer {
 contract DeployGlidepath {
     VmDeploy private constant vm = VmDeploy(address(uint160(uint256(keccak256("hevm cheat code")))));
     uint160 private constant HOOK_PERMISSION_MASK = (1 << 14) - 1;
-    uint160 private constant REQUIRED_HOOK_PERMISSIONS = 0x28cc;
+    uint160 private constant REQUIRED_HOOK_PERMISSIONS = 0x2acc;
     uint256 private constant MAX_SALT_SEARCH = 1 << 20;
 
     error WrongChain(uint256 chainId);
+    error InvalidPoolManager(address poolManager);
+    error InvalidTreasury(address treasury);
     error HookAddressSaltNotFound();
-    error FactoryAddressPredictionFailed(address expected, address actual);
+    error HookAddressPredictionFailed(address expected, address actual);
 
     function run() external returns (address hookAddress, address factoryAddress) {
         if (block.chainid != 4663) revert WrongChain(block.chainid);
@@ -60,6 +66,8 @@ contract DeployGlidepath {
         address poolManager = vm.envAddress("POOL_MANAGER_ADDRESS");
         address treasury = vm.envAddress("PLATFORM_TREASURY");
         uint256 launchFee = vm.envUint("LAUNCH_FEE_WEI");
+        if (poolManager.code.length == 0) revert InvalidPoolManager(poolManager);
+        if (treasury == address(0)) revert InvalidTreasury(treasury);
 
         vm.startBroadcast(privateKey);
         GlidepathCreate2Deployer create2Deployer = new GlidepathCreate2Deployer(deployer);
@@ -68,10 +76,8 @@ contract DeployGlidepath {
         uint64 helperNonce = vm.getNonce(address(create2Deployer));
         address predictedFactory = vm.computeCreateAddress(address(create2Deployer), uint256(helperNonce) + 1);
         bytes memory hookCreationCode = vm.getCode("src/GlidepathHook.sol:GlidepathHook");
-        bytes memory hookInitCode = abi.encodePacked(
-            hookCreationCode,
-            abi.encode(poolManager, predictedFactory, treasury)
-        );
+        bytes memory hookInitCode =
+            abi.encodePacked(hookCreationCode, abi.encode(poolManager, predictedFactory, treasury));
         bytes32 initCodeHash = keccak256(hookInitCode);
         bytes32 salt;
         bool found;
@@ -80,9 +86,7 @@ contract DeployGlidepath {
             address candidateAddress = address(
                 uint160(
                     uint256(
-                        keccak256(
-                            abi.encodePacked(bytes1(0xff), address(create2Deployer), candidate, initCodeHash)
-                        )
+                        keccak256(abi.encodePacked(bytes1(0xff), address(create2Deployer), candidate, initCodeHash))
                     )
                 )
             );
@@ -93,19 +97,18 @@ contract DeployGlidepath {
             }
         }
         if (!found) revert HookAddressSaltNotFound();
+        hookAddress = address(
+            uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(create2Deployer), salt, initCodeHash))))
+        );
+
+        bytes memory factoryCreationCode = vm.getCode("src/GlidepathLaunchFactory.sol:GlidepathLaunchFactory");
+        bytes memory factoryInitCode =
+            abi.encodePacked(factoryCreationCode, abi.encode(poolManager, hookAddress, treasury, launchFee));
 
         vm.startBroadcast(privateKey);
-        hookAddress = create2Deployer.deploy(hookInitCode, salt);
-        bytes memory factoryCreationCode = vm.getCode("src/GlidepathLaunchFactory.sol:GlidepathLaunchFactory");
-        bytes memory factoryInitCode = abi.encodePacked(
-            factoryCreationCode,
-            abi.encode(poolManager, hookAddress, treasury, launchFee)
-        );
-        factoryAddress = create2Deployer.deployCreate(factoryInitCode);
+        address actualHook;
+        (actualHook, factoryAddress) = create2Deployer.deployPair(hookInitCode, salt, factoryInitCode, predictedFactory);
         vm.stopBroadcast();
-
-        if (factoryAddress != predictedFactory) {
-            revert FactoryAddressPredictionFailed(predictedFactory, factoryAddress);
-        }
+        if (actualHook != hookAddress) revert HookAddressPredictionFailed(hookAddress, actualHook);
     }
 }

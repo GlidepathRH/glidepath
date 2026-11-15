@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.26;
 
 /// @notice Plain, fixed-supply ERC-20 created by GlidepathLaunchFactory.
 /// @dev Supply is minted once to the factory during construction. There is no

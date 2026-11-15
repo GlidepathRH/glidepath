@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.26;
 
 /// @notice Stage-one buy-only anti-snipe schedule math.
 /// @dev Rates use Uniswap fee pips: 1_000_000 pips = 100%.
@@ -33,17 +33,15 @@ library GlidepathSnipe {
                 revert InvalidOffConfiguration();
             }
         } else if (config.mode == Mode.Quick) {
-            if (
-                config.startPips != QUICK_START_PIPS
-                    || config.durationSeconds != QUICK_DURATION_SECONDS
-            ) revert InvalidQuickConfiguration();
+            if (config.startPips != QUICK_START_PIPS || config.durationSeconds != QUICK_DURATION_SECONDS) {
+                revert InvalidQuickConfiguration();
+            }
         } else {
             if (config.startPips < MIN_LONG_START_PIPS || config.startPips > QUICK_START_PIPS) {
                 revert InvalidLongStartRate(config.startPips);
             }
             if (
-                config.durationSeconds < MIN_LONG_DURATION_SECONDS
-                    || config.durationSeconds > MAX_LONG_DURATION_SECONDS
+                config.durationSeconds < MIN_LONG_DURATION_SECONDS || config.durationSeconds > MAX_LONG_DURATION_SECONDS
             ) revert InvalidLongDuration(config.durationSeconds);
         }
     }
@@ -51,12 +49,11 @@ library GlidepathSnipe {
     /// @notice Return the effective buy tax including the snipe overlay.
     /// @dev The snipe rate replaces the normal tax while it is higher; the two
     ///      taxes are never added. Sell paths must not call this function.
-    function effectiveBuyTax(
-        Config memory config,
-        uint64 tradingOpensAt,
-        uint64 timestamp,
-        uint24 normalTaxPips
-    ) internal pure returns (uint24) {
+    function effectiveBuyTax(Config memory config, uint64 tradingOpensAt, uint64 timestamp, uint24 normalTaxPips)
+        internal
+        pure
+        returns (uint24)
+    {
         if (config.mode == Mode.Off || timestamp >= tradingOpensAt + config.durationSeconds) {
             return normalTaxPips;
         }
@@ -69,9 +66,7 @@ library GlidepathSnipe {
         if (config.mode == Mode.Quick) {
             snipePips = (uint256(config.startPips) * remaining) / config.durationSeconds;
         } else {
-            uint256 excess = config.startPips > normalTaxPips
-                ? uint256(config.startPips) - normalTaxPips
-                : 0;
+            uint256 excess = config.startPips > normalTaxPips ? uint256(config.startPips) - normalTaxPips : 0;
             snipePips = uint256(normalTaxPips) + (excess * remaining) / config.durationSeconds;
         }
 

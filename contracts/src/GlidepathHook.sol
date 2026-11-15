@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.26;
 
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
@@ -140,10 +140,8 @@ contract GlidepathHook is IHooks {
         address quoteAddress = Currency.unwrap(quoteCurrency);
         if (
             tokenAddress == quoteAddress
-                || !(
-                    (tokenAddress == currency0 && quoteAddress == currency1)
-                        || (tokenAddress == currency1 && quoteAddress == currency0)
-                )
+                || !((tokenAddress == currency0 && quoteAddress == currency1)
+                    || (tokenAddress == currency1 && quoteAddress == currency0))
         ) revert InvalidPoolKey();
 
         GlidepathTaxPath.Path memory buy = buyPath;
@@ -153,9 +151,8 @@ contract GlidepathHook is IHooks {
         GlidepathTaxPath.validate(sell);
         GlidepathSnipe.validate(snipeConfig);
 
-        uint24 rateGap = buy.startPips > sell.startPips
-            ? buy.startPips - sell.startPips
-            : sell.startPips - buy.startPips;
+        uint24 rateGap =
+            buy.startPips > sell.startPips ? buy.startPips - sell.startPips : sell.startPips - buy.startPips;
         if (rateGap > 20_000) revert StartRatesDifferTooMuch(buy.startPips, sell.startPips);
 
         uint256 weightTotal;
@@ -251,11 +248,7 @@ contract GlidepathHook is IHooks {
         if (msg.sender != address(poolManager)) revert UnexpectedNativeTransfer();
     }
 
-    function beforeInitialize(address sender, PoolKey calldata key, uint160)
-        external
-        onlyPoolManager
-        returns (bytes4)
-    {
+    function beforeInitialize(address sender, PoolKey calldata key, uint160) external onlyPoolManager returns (bytes4) {
         if (sender != launchFactory) revert NotLaunchFactory();
         _launch(key.toId());
         if (key.hooks != IHooks(address(this)) || key.fee != 0) revert InvalidPoolKey();
@@ -283,12 +276,11 @@ contract GlidepathHook is IHooks {
         revert LiquidityIsPermanentlyLocked();
     }
 
-    function beforeSwap(
-        address,
-        PoolKey calldata key,
-        IPoolManager.SwapParams calldata params,
-        bytes calldata
-    ) external onlyPoolManager returns (bytes4, BeforeSwapDelta, uint24) {
+    function beforeSwap(address, PoolKey calldata key, IPoolManager.SwapParams calldata params, bytes calldata)
+        external
+        onlyPoolManager
+        returns (bytes4, BeforeSwapDelta, uint24)
+    {
         if (_swapLock != 1) revert ReentrantSwap();
         _swapLock = 2;
         PoolId poolId = key.toId();
@@ -313,19 +305,16 @@ contract GlidepathHook is IHooks {
 
         uint128 quoteAmount = _absAmount(params.amountSpecified);
         bool grossUpOutput = params.amountSpecified > 0;
-        (uint128 totalAmount,,) = _collectAndCredit(
-            poolId, config, quoteAmount, appliedTax, snipeTax, totalFeePips, grossUpOutput
-        );
+        (uint128 totalAmount,,) =
+            _collectAndCredit(poolId, config, quoteAmount, appliedTax, snipeTax, totalFeePips, grossUpOutput);
         if (totalAmount == 0) {
             delete _pendingQuoteSwaps[poolId];
             return (IHooks.beforeSwap.selector, toBeforeSwapDelta(0, 0), 0);
         }
 
         uint128 expectedSpecified = _netSpecifiedAmount(params.amountSpecified, totalAmount);
-        _pendingQuoteSwaps[poolId] = PendingQuoteSwap({
-            validateFullFill: true,
-            expectedSpecifiedAmount: expectedSpecified
-        });
+        _pendingQuoteSwaps[poolId] =
+            PendingQuoteSwap({validateFullFill: true, expectedSpecifiedAmount: expectedSpecified});
         if (totalAmount > uint128(type(int128).max)) revert FeeDeltaTooLarge(totalAmount);
         return (IHooks.beforeSwap.selector, toBeforeSwapDelta(int128(totalAmount), 0), 0);
     }
@@ -373,9 +362,8 @@ contract GlidepathHook is IHooks {
 
         int128 quoteDelta = _currencyDelta(delta, key, config.quoteCurrency);
         uint128 quoteAmount = _absAmount(int256(quoteDelta));
-        (uint128 totalAmount,,) = _collectAndCredit(
-            poolId, config, quoteAmount, appliedTax, snipeTax, totalFeePips, false
-        );
+        (uint128 totalAmount,,) =
+            _collectAndCredit(poolId, config, quoteAmount, appliedTax, snipeTax, totalFeePips, false);
         if (totalAmount > uint128(type(int128).max)) revert FeeDeltaTooLarge(totalAmount);
         _swapLock = 1;
         return (IHooks.afterSwap.selector, int128(totalAmount));
@@ -407,19 +395,11 @@ contract GlidepathHook is IHooks {
         revert UnsupportedHookCallback();
     }
 
-    function beforeDonate(address, PoolKey calldata, uint256, uint256, bytes calldata)
-        external
-        pure
-        returns (bytes4)
-    {
+    function beforeDonate(address, PoolKey calldata, uint256, uint256, bytes calldata) external pure returns (bytes4) {
         revert UnsupportedHookCallback();
     }
 
-    function afterDonate(address, PoolKey calldata, uint256, uint256, bytes calldata)
-        external
-        pure
-        returns (bytes4)
-    {
+    function afterDonate(address, PoolKey calldata, uint256, uint256, bytes calldata) external pure returns (bytes4) {
         revert UnsupportedHookCallback();
     }
 
@@ -437,8 +417,7 @@ contract GlidepathHook is IHooks {
             : GlidepathFeeMath.amountForRate(quoteAmount, totalFeePips);
         if (totalAmount == 0) return (0, 0, 0);
 
-        GlidepathFeeMath.AmountSplit memory split =
-            GlidepathFeeMath.splitCollectedFee(totalAmount, taxPips, snipeTax);
+        GlidepathFeeMath.AmountSplit memory split = GlidepathFeeMath.splitCollectedFee(totalAmount, taxPips, snipeTax);
         platformAmount = split.platformAmount;
         creatorAmount = split.creatorAmount;
         if (uint256(platformAmount) + creatorAmount != totalAmount) revert InvalidPoolKey();
@@ -465,11 +444,7 @@ contract GlidepathHook is IHooks {
         }
     }
 
-    function _normalTax(LaunchConfig storage config, bool isBuy, uint64 timestamp)
-        private
-        view
-        returns (uint24)
-    {
+    function _normalTax(LaunchConfig storage config, bool isBuy, uint64 timestamp) private view returns (uint24) {
         if (isBuy) {
             return GlidepathTaxPath.effectiveRate(
                 config.buyPath, config.tradingOpensAt, timestamp, config.creatorBuyCeilingPips
@@ -480,20 +455,12 @@ contract GlidepathHook is IHooks {
         );
     }
 
-    function _buyTax(LaunchConfig storage config, uint24 normalTax, uint64 timestamp)
-        private
-        view
-        returns (uint24)
-    {
+    function _buyTax(LaunchConfig storage config, uint24 normalTax, uint64 timestamp) private view returns (uint24) {
         if (config.snipeEnded) return normalTax;
         return GlidepathSnipe.effectiveBuyTax(config.snipe, config.tradingOpensAt, timestamp, normalTax);
     }
 
-    function _isBuy(LaunchConfig storage config, PoolKey calldata key, bool zeroForOne)
-        private
-        view
-        returns (bool)
-    {
+    function _isBuy(LaunchConfig storage config, PoolKey calldata key, bool zeroForOne) private view returns (bool) {
         Currency input = zeroForOne ? key.currency0 : key.currency1;
         return Currency.unwrap(input) == Currency.unwrap(config.quoteCurrency);
     }
@@ -526,11 +493,7 @@ contract GlidepathHook is IHooks {
         return specifiedIsCurrency0 ? key.currency1 : key.currency0;
     }
 
-    function _currencyDelta(BalanceDelta delta, PoolKey calldata key, Currency currency)
-        private
-        pure
-        returns (int128)
-    {
+    function _currencyDelta(BalanceDelta delta, PoolKey calldata key, Currency currency) private pure returns (int128) {
         return Currency.unwrap(currency) == Currency.unwrap(key.currency0) ? delta.amount0() : delta.amount1();
     }
 

@@ -15,9 +15,11 @@ The `lib/v4-core` submodule and `foundry.lock` pin the dependency. From the repo
 ```sh
 git submodule update --init --recursive
 forge build
+forge test
+forge fmt --check
 forge script script/Deploy.s.sol:DeployGlidepath --rpc-url robinhood --broadcast
 ```
 
-The deployment script mines a CREATE2 hook address with the required permission bits, predicts the matching factory CREATE address, and deploys both through a small helper.
+The deployment script mines a CREATE2 hook address with the required permission bits, predicts the matching factory CREATE address, and deploys both atomically through a small helper transaction.
 
-This is an initial implementation, not audited. Add launch-flow and accounting tests and complete a security review before deploying with real funds.
+This is an initial implementation, not audited. The local test suite covers launch creation, fixed supply, native/ERC-20 quote funding, initial liquidity bounds, swap fee accounting and claims, partial-fill rollback, glide/snipe schedules, creator controls, and the liquidity lock. Complete an independent security review before deploying with real funds.

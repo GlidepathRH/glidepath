@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.26;
 
 import {GlidepathHook} from "./GlidepathHook.sol";
 import {GlidepathSnipe} from "./GlidepathSnipe.sol";
@@ -89,8 +89,8 @@ contract GlidepathLaunchFactory is IUnlockCallback {
 
     constructor(IPoolManager poolManager_, GlidepathHook hook_, address platformTreasury_, uint256 launchFee_) {
         if (
-            address(poolManager_) == address(0) || address(hook_) == address(0)
-                || platformTreasury_ == address(0)
+            address(poolManager_) == address(0) || address(poolManager_).code.length == 0
+                || address(hook_) == address(0) || platformTreasury_ == address(0)
         ) revert InvalidAddress();
         if (
             address(hook_.poolManager()) != address(poolManager_) || hook_.launchFactory() != address(this)
@@ -113,8 +113,7 @@ contract GlidepathLaunchFactory is IUnlockCallback {
         if (
             params.totalSupply == 0 || params.liquidityTokenAmount == 0
                 || params.liquidityTokenAmount >= params.totalSupply || params.quoteAmount == 0
-                || params.sqrtPriceX96 <= TickMath.MIN_SQRT_PRICE
-                || params.sqrtPriceX96 >= TickMath.MAX_SQRT_PRICE
+                || params.sqrtPriceX96 <= TickMath.MIN_SQRT_PRICE || params.sqrtPriceX96 >= TickMath.MAX_SQRT_PRICE
                 || bytes(params.name).length == 0 || bytes(params.symbol).length == 0
         ) revert InvalidLaunchParameters();
 
@@ -141,13 +140,8 @@ contract GlidepathLaunchFactory is IUnlockCallback {
         bool tokenIsCurrency0 = token < params.quoteCurrency;
         Currency currency0 = tokenIsCurrency0 ? tokenCurrency : quoteCurrency;
         Currency currency1 = tokenIsCurrency0 ? quoteCurrency : tokenCurrency;
-        PoolKey memory key = PoolKey({
-            currency0: currency0,
-            currency1: currency1,
-            fee: 0,
-            tickSpacing: TICK_SPACING,
-            hooks: hook
-        });
+        PoolKey memory key =
+            PoolKey({currency0: currency0, currency1: currency1, fee: 0, tickSpacing: TICK_SPACING, hooks: hook});
 
         hook.registerPool(
             key,
@@ -178,6 +172,7 @@ contract GlidepathLaunchFactory is IUnlockCallback {
         });
         bytes memory result = poolManager.unlock(abi.encode(key, params.sqrtPriceX96));
         (uint256 usedToken, uint256 usedQuote) = abi.decode(result, (uint256, uint256));
+        if (usedToken == 0 || usedQuote == 0) revert InvalidLaunchParameters();
         delete _activeLaunch;
 
         uint256 creatorTokenAmount = params.totalSupply - usedToken;
@@ -228,10 +223,7 @@ contract GlidepathLaunchFactory is IUnlockCallback {
         (BalanceDelta delta,) = poolManager.modifyLiquidity(
             key,
             IPoolManager.ModifyLiquidityParams({
-                tickLower: MIN_TICK,
-                tickUpper: MAX_TICK,
-                liquidityDelta: int256(uint256(liquidity)),
-                salt: bytes32(0)
+                tickLower: MIN_TICK, tickUpper: MAX_TICK, liquidityDelta: int256(uint256(liquidity)), salt: bytes32(0)
             }),
             ""
         );
@@ -270,20 +262,17 @@ contract GlidepathLaunchFactory is IUnlockCallback {
         uint256 amount1
     ) private pure returns (uint128 liquidity) {
         uint256 liquidity0 = FullMath.mulDiv(
-            amount0,
-            FullMath.mulDiv(sqrtLowerX96, sqrtUpperX96, Q96),
-            sqrtUpperX96 - sqrtLowerX96
+            amount0, FullMath.mulDiv(sqrtLowerX96, sqrtUpperX96, Q96), sqrtUpperX96 - sqrtLowerX96
         );
         uint256 liquidity1 = FullMath.mulDiv(amount1, Q96, sqrtUpperX96 - sqrtLowerX96);
         uint256 result;
-        if (sqrtPriceX96 <= sqrtLowerX96) result = liquidity0;
-        else if (sqrtPriceX96 >= sqrtUpperX96) result = liquidity1;
-        else {
-            uint256 liquidity0AtPrice = FullMath.mulDiv(
-                amount0,
-                FullMath.mulDiv(sqrtPriceX96, sqrtUpperX96, Q96),
-                sqrtUpperX96 - sqrtPriceX96
-            );
+        if (sqrtPriceX96 <= sqrtLowerX96) {
+            result = liquidity0;
+        } else if (sqrtPriceX96 >= sqrtUpperX96) {
+            result = liquidity1;
+        } else {
+            uint256 liquidity0AtPrice =
+                FullMath.mulDiv(amount0, FullMath.mulDiv(sqrtPriceX96, sqrtUpperX96, Q96), sqrtUpperX96 - sqrtPriceX96);
             uint256 liquidity1AtPrice = FullMath.mulDiv(amount1, Q96, sqrtPriceX96 - sqrtLowerX96);
             result = liquidity0AtPrice < liquidity1AtPrice ? liquidity0AtPrice : liquidity1AtPrice;
         }
@@ -308,5 +297,4 @@ contract GlidepathLaunchFactory is IUnlockCallback {
     function hookPoolId(address token) private view returns (PoolId) {
         return poolForToken[token];
     }
-
 }

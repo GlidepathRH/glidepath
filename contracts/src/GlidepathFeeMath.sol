@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.26;
 
 /// @notice Glidepath's stage-one fee rates and documented revenue splits.
 /// @dev Rates use Uniswap fee pips: 1_000_000 pips = 100%.
@@ -46,11 +46,7 @@ library GlidepathFeeMath {
     }
 
     /// @notice Calculate total pool-hook fee, with the snipe rate replacing normal tax.
-    function totalBuyFeePips(uint24 normalTaxPips, uint24 snipeTaxPips)
-        internal
-        pure
-        returns (uint24)
-    {
+    function totalBuyFeePips(uint24 normalTaxPips, uint24 snipeTaxPips) internal pure returns (uint24) {
         uint24 taxPips = snipeTaxPips > normalTaxPips ? snipeTaxPips : normalTaxPips;
         if (taxPips > MAX_SNIPE_TAX_PIPS) revert SnipeTaxTooHigh(taxPips);
         uint24 total = BASE_FEE_PIPS + taxPips;
