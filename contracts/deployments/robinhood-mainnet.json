@@ -1,0 +1,63 @@
+{
+  "release": {
+    "name": "Hydrogen",
+    "symbol": "H",
+    "atomicNumber": 1,
+    "namingScheme": "Use distinct element names in increasing atomic-number order for each new contract release. Redeployments of the same release retain the name; chain and source commit identify the deployment."
+  },
+  "network": {
+    "name": "Robinhood Chain",
+    "chainId": 4663,
+    "rpc": "https://rpc.mainnet.chain.robinhood.com",
+    "poolManager": "0x8366a39cc670b4001a1121b8f6a443a643e40951"
+  },
+  "source": {
+    "repositoryCommit": "6383f14a90cd0f818c84e0752225259f17321b7d",
+    "solidity": "0.8.26",
+    "optimizer": true,
+    "optimizerRuns": 200,
+    "viaIR": true
+  },
+  "configuration": {
+    "deployer": "0xB86bA812A83908b29dBB0776CC08B9Abb1B72228",
+    "platformTreasury": "0xe012Ef850945Ae9dC78e99a112c1A83C1b373f2d",
+    "launchFeeWei": "0"
+  },
+  "contracts": {
+    "hook": {
+      "address": "0xd9C3FA83fdeDe47784a9FC62ECf11A4FBd24AaCc",
+      "runtimeCodeHash": "0xe8f7a0dde4c375f5cf81357ea5bb1d1a653345aa01a27ec37411fcafdcd6c1a5",
+      "explorer": "https://robinhoodchain.blockscout.com/address/0xd9C3FA83fdeDe47784a9FC62ECf11A4FBd24AaCc",
+      "runtimeMatchesLocalBuildWithImmutables": true
+    },
+    "factory": {
+      "address": "0x69531E368B9236c2ed7c6da054e8705506c7FA8d",
+      "runtimeCodeHash": "0x9a820afb704653127cdfcb2a2fcac9c756c7ba4f813aa25c236b2091a4b7f98d",
+      "explorer": "https://robinhoodchain.blockscout.com/address/0x69531E368B9236c2ed7c6da054e8705506c7FA8d",
+      "runtimeMatchesLocalBuildWithImmutables": true
+    },
+    "create2Deployer": {
+      "address": "0x8c9098227b8465a1154d3580a3a18fca3cc26c40",
+      "explorer": "https://robinhoodchain.blockscout.com/address/0x8c9098227b8465a1154d3580a3a18fca3cc26c40"
+    }
+  },
+  "transactions": [
+    {
+      "purpose": "Deploy CREATE2 helper",
+      "hash": "0xbff666da5b00411813ab883e7cefca9785b30ac5e772a11314a1e30d4d78b675",
+      "blockNumber": 115230834,
+      "status": "success"
+    },
+    {
+      "purpose": "Deploy hook and factory atomically through helper",
+      "hash": "0xb46323844741767e414078ff0e1716c05d678457e2939ceaee12bd2d53379a49",
+      "blockNumber": 115230855,
+      "status": "success"
+    }
+  ],
+  "verification": {
+    "onchainConfigurationReadback": true,
+    "runtimeBytecodeComparedToLocalBuild": true,
+    "explorerSourceVerification": "not completed; Blockscout verification endpoint returned a Cloudflare challenge during bytecode verification"
+  }
+}
