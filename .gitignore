@@ -22,3 +22,4 @@ contracts/deployer-keystore/
 /.audit-grade/runs/
 /.solidity-auditor/
 /.audit-grade/
+/scripts/

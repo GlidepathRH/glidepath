@@ -65,16 +65,6 @@ The first contract task is to pin Uniswap v4 core/periphery dependencies and imp
 
 The local `origin` should point to the private repository and `public-origin` to `GlidepathRH/glidepath`. Never put PATs in source files; the sync script uses those local Git remotes.
 
-## Public repository sync
-
-From the private repository's `main` branch, run:
-
-```sh
-python3 scripts/sync-public.py
-```
-
-The script creates/updates a local `public-main` branch with public commit identity, removes co-author trailers, excludes `technical-docs/` and real environment files (while retaining `.env.example` files), and pushes the result to `public-origin/main`. It does not publish automatically on each commit.
-
 ## Stack
 
 TypeScript · React · Vite · TanStack Start · Bun · Express · PostgreSQL · Solidity · Foundry · Uniswap v4 · Robinhood Chain
