@@ -62,6 +62,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /api/v1/indexer:
     get:
       tags: [Indexer]
@@ -76,6 +78,8 @@ paths:
                 $ref: '#/components/schemas/IndexerStatus'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '503':
           description: API authentication is not configured.
           content:
@@ -124,6 +128,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /api/v1/launches/{tokenAddress}:
     parameters:
       - $ref: '#/components/parameters/TokenAddress'
@@ -174,6 +180,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /api/v1/launches/{tokenAddress}/events:
     parameters:
       - $ref: '#/components/parameters/TokenAddress'
@@ -215,6 +223,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
 components:
   securitySchemes:
     MasterApiKey:
@@ -234,6 +244,17 @@ components:
   responses:
     Unauthorized:
       description: Missing or invalid bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimited:
+      description: More than 10 failed authentication attempts from this IP in 15 minutes.
+      headers:
+        Retry-After:
+          description: Seconds until the current rate-limit window expires.
+          schema:
+            type: integer
       content:
         application/json:
           schema:
