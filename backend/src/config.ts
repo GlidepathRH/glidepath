@@ -1,4 +1,4 @@
-import { isAddress } from "viem";
+import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 
 const nonEmpty = z.string().trim().min(1);
@@ -13,8 +13,12 @@ const configSchema = z.object({
   RHC_RPC_URL: z.url(),
   FRONTEND_URL: z.preprocess((value) => (value === "" ? undefined : value), z.url().optional()),
   RHC_CHAIN_ID: positiveInteger(4663),
-  GLIDEPATH_FACTORY_ADDRESS: nonEmpty.refine(isAddress, "must be an EVM address"),
-  GLIDEPATH_HOOK_ADDRESS: nonEmpty.refine(isAddress, "must be an EVM address"),
+  GLIDEPATH_FACTORY_ADDRESS: nonEmpty
+    .refine((value) => isAddress(value, { strict: false }), "must be a 20-byte EVM address")
+    .transform((value) => getAddress(value.toLowerCase())),
+  GLIDEPATH_HOOK_ADDRESS: nonEmpty
+    .refine((value) => isAddress(value, { strict: false }), "must be a 20-byte EVM address")
+    .transform((value) => getAddress(value.toLowerCase())),
   RHC_DEPLOYMENT_BLOCK: z.preprocess(
     (value) => (value === undefined || value === "" ? "0" : value),
     z.coerce.bigint().nonnegative(),

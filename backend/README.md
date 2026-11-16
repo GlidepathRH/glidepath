@@ -4,7 +4,7 @@ The backend serves a read-only view of Glidepath launches on Robinhood Chain. It
 
 ## Configuration
 
-Copy `.env.example` to `.env`. Set `DATABASE_URL`, `RHC_RPC_URL`, and `FRONTEND_URL`. The current chain ID, factory, hook and deployment block are prefilled for the Hydrogen deployment. The current read-only API does not access or use the treasury private key configured in the local environment.
+Copy `.env.example` to `.env`. Set `DATABASE_URL`, `RHC_RPC_URL`, and `FRONTEND_URL`. The current chain ID, factory, hook and deployment block are prefilled for the Hydrogen deployment. EVM addresses are validated as 20-byte hex and normalized to checksum casing at startup. The current read-only API does not access or use the treasury private key configured in the local environment.
 
 The indexer waits for `INDEXER_CONFIRMATIONS` blocks, scans up to `INDEXER_BLOCK_RANGE` blocks per poll, and resumes from its PostgreSQL cursor after restart. A PostgreSQL advisory lock prevents multiple backend instances from indexing the same range concurrently.
 
