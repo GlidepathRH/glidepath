@@ -8,6 +8,10 @@ Copy `.env.example` to `.env`. Set `DATABASE_URL`, `RHC_RPC_URL`, and `FRONTEND_
 
 The indexer waits for `INDEXER_CONFIRMATIONS` blocks, scans up to `INDEXER_BLOCK_RANGE` blocks per poll, and resumes from its PostgreSQL cursor after restart. A PostgreSQL advisory lock prevents multiple backend instances from indexing the same range concurrently.
 
+## CI and publishing
+
+On the public repository, CI typechecks the backend and builds its Docker image for pushes and pull requests. A push to public `main` also publishes `ghcr.io/glidepathrh/glidepath-backend:latest` and a commit-SHA tag, then triggers Render through `RENDER_DEPLOY_HOOK_URL` when that GitHub Actions secret is configured. GHCR may create the package as private initially; make the package public in GitHub's package settings if it should be pulled without registry credentials. The Render hook remains a separate deployment path and does not automatically switch Render to pull the GHCR image.
+
 ## API
 
 - `GET /health/` — process health.
