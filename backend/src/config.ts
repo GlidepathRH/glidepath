@@ -11,6 +11,10 @@ const positiveInteger = (fallback: number) =>
 const configSchema = z.object({
   DATABASE_URL: z.url(),
   RHC_RPC_URL: z.url(),
+  MASTER_API_KEY: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(32, "must contain at least 32 characters").optional(),
+  ),
   FRONTEND_URL: z.preprocess((value) => (value === "" ? undefined : value), z.url().optional()),
   RHC_CHAIN_ID: positiveInteger(4663),
   GLIDEPATH_FACTORY_ADDRESS: nonEmpty

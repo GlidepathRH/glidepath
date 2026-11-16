@@ -1,0 +1,332 @@
+openapi: 3.1.0
+info:
+  title: Glidepath API
+  version: 0.1.0
+  license:
+    name: MIT
+    identifier: MIT
+  description: >-
+    Read-only API for Glidepath launches on Robinhood Chain. All endpoints except
+    GET /health/ require the configured MASTER_API_KEY as a Bearer token.
+servers:
+  - url: https://glidepath-api-mym0.onrender.com
+    description: Production
+  - url: http://localhost:3001
+    description: Local development
+security:
+  - MasterApiKey: []
+tags:
+  - name: System
+    description: Health and dependency status.
+  - name: Indexer
+    description: Indexing progress for Robinhood Chain.
+  - name: Launches
+    description: Read-only launch and event data.
+paths:
+  /health:
+    get:
+      tags: [System]
+      operationId: getHealth
+      summary: Public process health
+      security: []
+      responses:
+        '200':
+          description: Process is responding.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '404':
+          description: Route not found.
+  /ready:
+    get:
+      tags: [System]
+      operationId: getReadiness
+      summary: Check database and Robinhood RPC readiness
+      responses:
+        '200':
+          description: Dependencies are ready.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, chainId]
+                properties:
+                  status: { type: string, const: ready }
+                  chainId: { type: integer, const: 4663 }
+        '503':
+          description: A dependency is unavailable, the chain is misconfigured, or API authentication is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/indexer:
+    get:
+      tags: [Indexer]
+      operationId: getIndexerStatus
+      summary: Get current indexer state
+      responses:
+        '200':
+          description: In-memory status of the most recent polling cycle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexerStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: API authentication is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/launches:
+    get:
+      tags: [Launches]
+      operationId: listLaunches
+      summary: List recently indexed launches
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of launches to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Launches ordered newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LaunchSummary'
+        '400':
+          description: Invalid limit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Launch index is unavailable or API authentication is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/launches/{tokenAddress}:
+    parameters:
+      - $ref: '#/components/parameters/TokenAddress'
+    get:
+      tags: [Launches]
+      operationId: getLaunch
+      summary: Get launch details and current hook taxes
+      responses:
+        '200':
+          description: Indexed launch data with taxes read live from the hook.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/LaunchSummary'
+                      - type: object
+                        required: [chain_id, indexed_at, buy_tax_pips, sell_tax_pips]
+                        properties:
+                          chain_id: { type: integer }
+                          indexed_at: { type: string, format: date-time }
+                          buy_tax_pips:
+                            type: integer
+                            description: Current buy tax; 1,000,000 pips equals 100%.
+                          sell_tax_pips:
+                            type: integer
+                            description: Current sell tax; 1,000,000 pips equals 100%.
+        '400':
+          description: tokenAddress is not a valid EVM address.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Launch not found in the index.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Launch data is unavailable or API authentication is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/launches/{tokenAddress}/events:
+    parameters:
+      - $ref: '#/components/parameters/TokenAddress'
+    get:
+      tags: [Launches]
+      operationId: listLaunchEvents
+      summary: List indexed launch and pool events
+      description: Returns up to 200 matching events, newest first.
+      responses:
+        '200':
+          description: Indexed events for the launch pool.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LaunchEvent'
+        '400':
+          description: tokenAddress is not a valid EVM address.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Launch not found in the index.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Launch event index is unavailable or API authentication is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+components:
+  securitySchemes:
+    MasterApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: MASTER_API_KEY
+      description: Send the configured MASTER_API_KEY as an Authorization Bearer token.
+  parameters:
+    TokenAddress:
+      name: tokenAddress
+      in: path
+      required: true
+      description: ERC-20 launch token address.
+      schema:
+        type: string
+        pattern: '^0x[0-9a-fA-F]{40}$'
+  responses:
+    Unauthorized:
+      description: Missing or invalid bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Health:
+      type: object
+      required: [status, timestamp, version, commit]
+      properties:
+        status: { type: string, const: ok }
+        timestamp: { type: string, format: date-time }
+        version: { type: string, example: 0.1.0 }
+        commit: { type: string, description: Full source commit SHA baked into the image, example: unknown }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    IndexerStatus:
+      type: object
+      required: [status, chainId, nextBlock, indexedThroughBlock, lastPollAt, lastError]
+      properties:
+        status:
+          type: string
+          enum: [starting, syncing, idle, error]
+        chainId: { type: integer, example: 4663 }
+        nextBlock: { type: [string, 'null'] }
+        indexedThroughBlock: { type: [string, 'null'] }
+        lastPollAt: { type: [string, 'null'], format: date-time }
+        lastError: { type: [string, 'null'], description: Error class name only; null when the last poll succeeded. }
+    LaunchSummary:
+      type: object
+      properties:
+        token_address: { $ref: '#/components/schemas/Address' }
+        pool_id: { $ref: '#/components/schemas/Bytes32' }
+        creator_address: { $ref: '#/components/schemas/Address' }
+        quote_currency: { $ref: '#/components/schemas/Address' }
+        token_name: { type: string }
+        token_symbol: { type: string }
+        token_decimals: { type: integer }
+        total_supply: { $ref: '#/components/schemas/DecimalString' }
+        liquidity_token_amount: { $ref: '#/components/schemas/DecimalString' }
+        liquidity_quote_amount: { $ref: '#/components/schemas/DecimalString' }
+        creator_first_buy_token_amount: { $ref: '#/components/schemas/DecimalString' }
+        creator_first_buy_quote_amount: { $ref: '#/components/schemas/DecimalString' }
+        sqrt_price_x96: { $ref: '#/components/schemas/DecimalString' }
+        trading_opens_at: { $ref: '#/components/schemas/DecimalString' }
+        buy_path: { $ref: '#/components/schemas/TaxPath' }
+        sell_path: { $ref: '#/components/schemas/TaxPath' }
+        creator_buy_ceiling_pips: { type: integer }
+        creator_sell_ceiling_pips: { type: integer }
+        snipe_config: { type: object, additionalProperties: true }
+        snipe_ended: { type: boolean }
+        payout_recipients:
+          type: array
+          items: { $ref: '#/components/schemas/Address' }
+        payout_weights_bps:
+          type: array
+          items: { type: integer }
+        launch_block_number: { $ref: '#/components/schemas/DecimalString' }
+        launch_block_timestamp: { $ref: '#/components/schemas/DecimalString' }
+        launch_transaction_hash: { $ref: '#/components/schemas/Bytes32' }
+        launch_log_index: { type: integer }
+    TaxPath:
+      type: object
+      properties:
+        startPips: { $ref: '#/components/schemas/IntegerLike' }
+        floorPips: { $ref: '#/components/schemas/IntegerLike' }
+        stepPips: { $ref: '#/components/schemas/IntegerLike' }
+        holdSeconds: { $ref: '#/components/schemas/IntegerLike' }
+        stepIntervalSeconds: { $ref: '#/components/schemas/IntegerLike' }
+      additionalProperties: true
+    LaunchEvent:
+      type: object
+      properties:
+        event_name: { type: string }
+        args: { type: object, additionalProperties: true }
+        block_number: { $ref: '#/components/schemas/DecimalString' }
+        block_timestamp: { $ref: '#/components/schemas/DecimalString' }
+        transaction_hash: { $ref: '#/components/schemas/Bytes32' }
+        log_index: { type: integer }
+        contract_address: { $ref: '#/components/schemas/Address' }
+    Address:
+      type: string
+      pattern: '^0x[0-9a-fA-F]{40}$'
+    Bytes32:
+      type: string
+      pattern: '^0x[0-9a-fA-F]{64}$'
+    DecimalString:
+      type: string
+      pattern: '^[0-9]+$'
+      description: Decimal integer string preserving full EVM integer precision.
+    IntegerLike:
+      oneOf:
+        - type: integer
+        - $ref: '#/components/schemas/DecimalString'

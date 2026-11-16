@@ -4,7 +4,7 @@ The backend serves a read-only view of Glidepath launches on Robinhood Chain. It
 
 ## Configuration
 
-Copy `.env.example` to `.env`. Set `DATABASE_URL`, `RHC_RPC_URL`, and `FRONTEND_URL`. The current chain ID, factory, hook and deployment block are prefilled for the Hydrogen deployment. EVM addresses are validated as 20-byte hex and normalized to checksum casing at startup. The current read-only API does not access or use the treasury private key configured in the local environment.
+Copy `.env.example` to `.env`. Set `DATABASE_URL`, `RHC_RPC_URL`, `MASTER_API_KEY`, and `FRONTEND_URL`. Set `MASTER_API_KEY` to a random secret with at least 32 characters; configure the same value in the hosting provider's environment. All routes except `/health/` require `Authorization: Bearer <MASTER_API_KEY>`. If the key is missing, protected routes fail closed with `503`; the health route remains public. The current chain ID, factory, hook and deployment block are prefilled for the Hydrogen deployment. EVM addresses are validated as 20-byte hex and normalized to checksum casing at startup. The current read-only API does not access or use the treasury private key configured in the local environment.
 
 The indexer waits for `INDEXER_CONFIRMATIONS` blocks, scans up to `INDEXER_BLOCK_RANGE` blocks per poll, and resumes from its PostgreSQL cursor after restart. A PostgreSQL advisory lock prevents multiple backend instances from indexing the same range concurrently.
 
@@ -14,12 +14,15 @@ On the public repository, CI typechecks the backend and builds its Docker image 
 
 ## API
 
+- Full OpenAPI 3.1 contract: [`openapi.yaml`](./openapi.yaml).
 - `GET /health/` — process health.
 - `GET /ready/` — database and Robinhood RPC readiness.
 - `GET /api/v1/indexer` — indexer status and indexed block cursor.
 - `GET /api/v1/launches?limit=50` — latest indexed launches, up to 100.
 - `GET /api/v1/launches/:tokenAddress` — launch details plus current buy/sell tax in Uniswap pips.
 - `GET /api/v1/launches/:tokenAddress/events` — indexed launch and pool events.
+
+All listed routes except `/health/` require the bearer token described above. CORS preflight requests are accepted without credentials; the actual API request must include the bearer token.
 
 The health response includes `commit`, the full Git commit SHA baked into the image at build time. Local runs show `unknown` unless `APP_COMMIT_SHA` is set.
 
