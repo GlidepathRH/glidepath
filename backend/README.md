@@ -10,7 +10,7 @@ The indexer waits for `INDEXER_CONFIRMATIONS` blocks, scans up to `INDEXER_BLOCK
 
 ## CI and publishing
 
-On the public repository, CI typechecks the backend and builds its Docker image for pushes and pull requests. A push to public `main` also publishes `ghcr.io/glidepathrh/glidepath-backend:latest` and a commit-SHA tag, then triggers Render through `RENDER_DEPLOY_HOOK_URL` when that GitHub Actions secret is configured. GHCR may create the package as private initially; make the package public in GitHub's package settings if it should be pulled without registry credentials. The Render hook remains a separate deployment path and does not automatically switch Render to pull the GHCR image.
+On the public repository, CI typechecks the backend and builds its Docker image for pushes and pull requests. A push to public `main` also publishes `ghcr.io/glidepathrh/glidepath-backend:latest` and a commit-SHA tag, then triggers Render through `RENDER_DEPLOY_HOOK_URL` when that GitHub Actions secret is configured. The image is published with `GITHUB_TOKEN` from the public repository and carries an OCI source label linking it to Glidepath; GHCR inherits the linked repository's public visibility. The Render hook remains a separate deployment path and does not automatically switch Render to pull the GHCR image.
 
 ## API
 

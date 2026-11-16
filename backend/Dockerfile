@@ -7,6 +7,7 @@ RUN bun install --frozen-lockfile --production --ignore-scripts
 
 FROM base AS runner
 ENV NODE_ENV=production
+LABEL org.opencontainers.image.source="https://github.com/GlidepathRH/glidepath"
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 EXPOSE 3001
