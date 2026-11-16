@@ -25,7 +25,7 @@ app.use((request, response, next) => {
   next();
 });
 app.use("/health", healthRouter);
-app.use(createMasterApiAuth(config.MASTER_API_KEY));
+app.use(createMasterApiAuth(config.MASTER_API_KEY, db));
 app.use(express.json({ limit: "32kb" }));
 app.use("/ready", createReadinessRouter(db, publicClient));
 app.use("/api/v1/launches", createLaunchRouter(db, publicClient));

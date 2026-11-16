@@ -55,7 +55,7 @@ paths:
                   status: { type: string, const: ready }
                   chainId: { type: integer, const: 4663 }
         '503':
-          description: A dependency is unavailable, the chain is misconfigured, or API authentication is not configured.
+          description: A dependency is unavailable, the chain is misconfigured, API authentication is unconfigured, or the PostgreSQL rate limiter is unavailable.
           content:
             application/json:
               schema:
@@ -81,7 +81,7 @@ paths:
         '429':
           $ref: '#/components/responses/RateLimited'
         '503':
-          description: API authentication is not configured.
+          description: API authentication is not configured or the PostgreSQL rate limiter is unavailable.
           content:
             application/json:
               schema:
@@ -121,7 +121,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '503':
-          description: Launch index is unavailable or API authentication is not configured.
+          description: Launch index is unavailable, API authentication is unconfigured, or the PostgreSQL rate limiter is unavailable.
           content:
             application/json:
               schema:
@@ -173,7 +173,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '503':
-          description: Launch data is unavailable or API authentication is not configured.
+          description: Launch data is unavailable, API authentication is unconfigured, or the PostgreSQL rate limiter is unavailable.
           content:
             application/json:
               schema:
@@ -216,7 +216,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '503':
-          description: Launch event index is unavailable or API authentication is not configured.
+          description: Launch event index is unavailable, API authentication is unconfigured, or the PostgreSQL rate limiter is unavailable.
           content:
             application/json:
               schema:

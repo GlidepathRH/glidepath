@@ -24,7 +24,7 @@ On the public repository, CI typechecks the backend and builds its Docker image 
 
 All listed routes except `/health/` require the bearer token described above. CORS preflight requests are accepted without credentials; the actual API request must include the bearer token.
 
-Failed or missing bearer credentials are limited to 10 attempts per client IP per 15-minute window. Further attempts receive `429` with a `Retry-After` header. The in-memory limiter is per process; if the service scales to multiple instances, move the counters to a shared store such as Redis/Render Key Value.
+Failed or missing bearer credentials are limited to 10 attempts per client IP per 15-minute window. Further attempts receive `429` with a `Retry-After` header. Counters are stored atomically in PostgreSQL and shared across service instances. Expired IP buckets are pruned periodically; client IPs are retained for up to an hour after their rate-limit window starts. The limiter fails closed with `503` if PostgreSQL is unavailable.
 
 The health response includes `commit`, the full Git commit SHA baked into the image at build time. Local runs show `unknown` unless `APP_COMMIT_SHA` is set.
 

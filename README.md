@@ -58,7 +58,7 @@ The backend indexes launch and pool events from the deployed Hydrogen factory an
 
 ## Deployment
 
-- **Frontend:** Vercel, connected to the private `NotADeveloper7/glidepath` repository.
+- **Frontend:** Vercel, connected to the Glidepath GitHub repository.
 - **Backend:** Render, rooted at `/backend`; set `DATABASE_URL`, `RHC_RPC_URL`, `FRONTEND_URL`, and the platform `PORT`. The optional workflow deploy hook uses `RENDER_DEPLOY_HOOK_URL`.
 - **Contracts:** deployed on Robinhood Chain; see `contracts/deployments/robinhood-mainnet.json` for the contract and treasury addresses.
 
