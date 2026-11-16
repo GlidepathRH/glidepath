@@ -21,6 +21,8 @@ On the public repository, CI typechecks the backend and builds its Docker image 
 - `GET /api/v1/launches/:tokenAddress` — launch details plus current buy/sell tax in Uniswap pips.
 - `GET /api/v1/launches/:tokenAddress/events` — indexed launch and pool events.
 
+The health response includes `commit`, the full Git commit SHA baked into the image at build time. Local runs show `unknown` unless `APP_COMMIT_SHA` is set.
+
 Large token amounts are returned as decimal strings. Tax rates are integers where 1,000,000 pips equals 100%.
 
 ## Development

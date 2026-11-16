@@ -17,7 +17,7 @@ jobs:
       - run: bun install --frozen-lockfile --ignore-scripts
       - run: bun run check
       - name: Build production image
-        run: docker build --tag glidepath-backend:ci .
+        run: docker build --build-arg APP_COMMIT_SHA=${{ github.sha }} --tag glidepath-backend:ci .
 
   publish:
     needs: check
@@ -40,6 +40,8 @@ jobs:
         with:
           context: ./backend
           push: true
+          build-args: |
+            APP_COMMIT_SHA=${{ github.sha }}
           tags: |
             ghcr.io/glidepathrh/glidepath-backend:latest
             ghcr.io/glidepathrh/glidepath-backend:${{ github.sha }}
