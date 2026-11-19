@@ -27,8 +27,8 @@ The first contract release, **Hydrogen (H)**, is deployed on Robinhood Chain. De
 | Path | Purpose |
 | --- | --- |
 | `/src` | Vite + TanStack Start frontend |
-| `/src/glidy` | Integrated GLIDY React experience and its mock-data modules |
-| `/public` | GLIDY brand, market, quote and media assets |
+| `/src/glidy` | GLIDY launch browser, API client, and product documentation |
+| `/public` | GLIDY brand assets and local fonts |
 | `/src/routes/api/glidy` | Same-origin server proxy for protected backend reads |
 | `/backend` | Bun + Express + TypeScript API and PostgreSQL migration runner |
 | `/contracts` | Foundry workspace for the Uniswap v4 hook and launch contracts |
@@ -59,7 +59,7 @@ cp .env.example .env
 forge build
 ```
 
-The frontend preserves the supplied GLIDY experience and adds a GLIDY onchain launch section backed by the read-only API. It calls a same-origin TanStack server route, which forwards allowlisted read requests using the server-only `MASTER_API_KEY`; that key must never use a `VITE_` prefix or be shipped to browser code. Set `GLIDY_API_BASE_URL` and `MASTER_API_KEY` in the frontend host's server environment. The API lists launches and reads current taxes/events; token creation and swaps are not yet wired to wallet transactions.
+The frontend loads indexed GLIDY launches, launch details, current hook taxes and pool events through a same-origin TanStack server proxy. The proxy attaches the server-only `MASTER_API_KEY` and allows only documented read routes. Set `GLIDY_API_BASE_URL` and `MASTER_API_KEY` in the frontend host's server environment; never expose the key to browser code or use a `VITE_` prefix.
 
 ## Deployment
 

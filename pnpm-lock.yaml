@@ -169,18 +169,12 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.2.1
         version: 4.3.5(vite@8.1.5(@types/node@26.6.6)(jiti@2.7.0))
-      '@tanstack/react-query':
-        specifier: ^5.101.1
-        version: 5.108.0(@types/react@19.3.0)(react@19.3.1)
       '@tanstack/react-router':
         specifier: 1.170.41
         version: 1.170.41(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-start':
         specifier: 1.168.60
         version: 1.168.60(crossws@0.4.17(srvx@1.0.8))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.1.8)(vite@8.1.5(@types/node@26.6.6)(jiti@2.7.0))
-      lightweight-charts:
-        specifier: 5.1.0
-        version: 5.1.0
       lucide-react:
         specifier: 0.468.0
         version: 0.468.0(react@19.3.1)
@@ -549,18 +543,6 @@ packages:
     resolution: {integrity: sha512-utTS5L2OkeYUzXGohL1Z8sefu1GLNOJcxe8Hd6iIdc/Xo1K1nDB2JEp4iSFhvYh33xKC9V91TxrS8qfrpoKobQ==}
     engines: {node: '>=20.19'}
 
-  '@tanstack/query-core@5.108.0':
-    resolution: {integrity: sha512-X9zJUtEV/0D2q9pmGS/Bza8S4bNovSBhZOtdhtu0fzsHwizC6C+Eh/q5CX3MQBchsRMrirWVQmv7Fp4OStzV9g==}
-
-  '@tanstack/react-query@5.108.0':
-    resolution: {integrity: sha512-DpMbB8pVorEZcsHRa0Z13KQGfmndqvJbuLy9h+xfP8XpuEZBOxzq+QfXGonQ0fAgRSWhc+QsfoRETSTWxAEAVw==}
-    peerDependencies:
-      '@types/react': ^18 || ^19
-      react: ^18 || ^19
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-
   '@tanstack/react-router@1.170.41':
     resolution: {integrity: sha512-Mpvw8Wm5MGDbTqI8Yc9flLKxbOHwoWocv0H2aGKcgw2a017oK5nZWqa954P+DrUx/8fI98YNywnHP5XcD3tQ9w==}
     engines: {node: '>=20.19'}
@@ -801,9 +783,6 @@ packages:
   exsolve@1.2.0:
     resolution: {integrity: sha512-h1pQPR9XoeSMdntRNCjyTznaume4UpfXrULBnlkZ2CUM/G5eSa+pBByGldO5uR8dxbPC+OuJXsPPNf+JZ81ADg==}
 
-  fancy-canvas@2.1.0:
-    resolution: {integrity: sha512-nifxXJ95JNLFR2NgRV4/MxVP45G9909wJTEKz5fg/TZS20JJZA6hfgRVh/bC9bwl2zBtBNcYPjiBE4njQHVBwQ==}
-
   fdir@6.5.0:
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
     engines: {node: '>=12.0.0'}
@@ -949,9 +928,6 @@ packages:
   lightningcss@1.33.0:
     resolution: {integrity: sha512-WkUDrojuJs0xkgGf2udWxa3yGBRxPtxUkB79i6aCZLRgc7PM8fZe9TosfPDcvEpQZbuFASnHYmRLBLUbmLOIIA==}
     engines: {node: '>= 12.0.0'}
-
-  lightweight-charts@5.1.0:
-    resolution: {integrity: sha512-jEAYR4ODYeyNZcWUigsoLTl52rbPmgXnvd5FLIv/ZoA/2sSDw63YKnef8n4yhzum7W926yHeFwlm7ididKb7YQ==}
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
@@ -1504,15 +1480,6 @@ snapshots:
 
   '@tanstack/history@1.162.4': {}
 
-  '@tanstack/query-core@5.108.0': {}
-
-  '@tanstack/react-query@5.108.0(@types/react@19.3.0)(react@19.3.1)':
-    dependencies:
-      '@tanstack/query-core': 5.108.0
-      react: 19.3.1
-    optionalDependencies:
-      '@types/react': 19.3.0
-
   '@tanstack/react-router@1.170.41(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@tanstack/history': 1.162.4
@@ -1840,8 +1807,6 @@ snapshots:
 
   exsolve@1.2.0: {}
 
-  fancy-canvas@2.1.0: {}
-
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
@@ -1932,10 +1897,6 @@ snapshots:
       lightningcss-linux-x64-musl: 1.33.0
       lightningcss-win32-arm64-msvc: 1.33.0
       lightningcss-win32-x64-msvc: 1.33.0
-
-  lightweight-charts@5.1.0:
-    dependencies:
-      fancy-canvas: 2.1.0
 
   lru-cache@5.1.1:
     dependencies:

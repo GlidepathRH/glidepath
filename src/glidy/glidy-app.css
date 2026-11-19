@@ -1,0 +1,158 @@
+.glidy-shell {
+  --ink: #1a1522;
+  --muted: #77717f;
+  --line: #e4e1e9;
+  --soft: #f6f5fb;
+  --purple: #2a1eff;
+  display: flex;
+  min-height: 100vh;
+  background: #fbfafc;
+  color: var(--ink);
+}
+.glidy-nav {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 50;
+  display: flex;
+  width: 216px;
+  flex-direction: column;
+  padding: 24px 18px 18px;
+  border-right: 1px solid #ebe5f0;
+  background: #faf8fc;
+}
+.glidy-brand {
+  display: flex;
+  width: 52px;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 34px 3px;
+}
+.glidy-brand img { width: 44px; height: 44px; object-fit: contain; }
+.glidy-nav nav { display: grid; gap: 7px; }
+.glidy-nav nav a {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 7px;
+  color: #6f6478;
+  font-size: 11px;
+  transition: background .16s, color .16s;
+}
+.glidy-nav nav a:hover { background: #f1edf7; color: #352344; }
+.glidy-nav nav a.active { background: #ebe6f7; color: #4d3488; }
+.glidy-nav-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: auto;
+  padding: 14px 12px 0;
+  border-top: 1px solid #ebe4f0;
+  color: #6e6377;
+  font-size: 10px;
+}
+.glidy-nav-foot span { color: #96909d; font-size: 9px; }
+.glidy-shell-main { width: calc(100% - 216px); min-width: 0; margin-left: 216px; }
+.glidy-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  height: 70px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 44px;
+  border-bottom: 1px solid #eeeaf1;
+  background: #fbfafcf5;
+  color: #352344;
+  font-size: 11px;
+  backdrop-filter: blur(18px);
+}
+.glidy-network { display: inline-flex; align-items: center; gap: 7px; color: #6d6372; font-size: 10px; }
+.glidy-network i { width: 6px; height: 6px; border-radius: 50%; background: #8ca485; }
+.glidy-mobile-menu { display: none; }
+.glidy-content { width: 100%; max-width: 1420px; min-height: calc(100vh - 132px); margin: 0 auto; padding: 40px 44px 48px; outline: none; }
+.glidy-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 0 44px; padding: 18px 0 23px; border-top: 1px solid #ece7f0; color: #6e6574; font-size: 10px; }
+.glidy-footer a { display: inline-flex; align-items: center; gap: 5px; color: #514687; }
+.glidy-nav-scrim { display: none; }
+.glidy-docs { display: grid; grid-template-columns: 210px minmax(0, 740px); gap: clamp(32px, 6vw, 88px); max-width: 1120px; margin: 0 auto; }
+.glidy-docs-nav { position: sticky; top: 108px; align-self: start; }
+.glidy-docs-nav .glidy-api-kicker { margin: 0 0 18px; }
+.glidy-docs-nav nav { display: grid; gap: 4px; }
+.glidy-docs-nav nav a { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 10px; color: #746d7c; font-size: 11px; }
+.glidy-docs-nav nav a.active, .glidy-docs-nav nav a:hover { background: #f0edfa; color: #4d3488; }
+.glidy-docs-article { min-width: 0; }
+.glidy-docs-article > .glidy-api-kicker { margin-bottom: 17px; }
+.glidy-docs-article h1 { max-width: 720px; margin: 0 0 18px; font: 500 clamp(30px, 4vw, 46px)/1.2 Azeret, monospace; letter-spacing: -1.5px; }
+.glidy-docs-intro { margin: 0 0 36px; color: #625b6a; font-size: 13px; line-height: 1.8; }
+.glidy-docs-article section { padding: 20px 0; border-top: 1px solid #e8e4ec; }
+.glidy-docs-article section h2 { margin: 0 0 8px; font: 500 16px/1.4 Azeret, monospace; }
+.glidy-docs-article section p { margin: 0; color: #716b78; font-size: 11px; line-height: 1.9; overflow-wrap: anywhere; }
+.glidy-docs-control { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 20px; color: #716b78; font-size: 10px; }
+.glidy-docs-control button { padding: 9px 12px; border: 1px solid var(--line); background: white; color: #514687; }
+.glidy-docs-external { display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; color: #514687; font-size: 11px; }
+.glidy-chain-section { margin: 0; padding: 0; border: 0; background: transparent; }
+.glidy-chain-heading { align-items: flex-end; margin-bottom: 22px; }
+.glidy-chain-heading h1 { margin: 8px 0 7px; font: 500 clamp(30px, 4vw, 42px)/1.18 Azeret, monospace; letter-spacing: -1.2px; }
+.glidy-chain-heading p:not(.glidy-api-kicker) { max-width: 620px; font-size: 11px; line-height: 1.7; }
+.glidy-chain-meta { align-items: flex-end; flex-direction: column; text-align: right; }
+.glidy-chain-meta button { width: 34px; height: 34px; }
+.glidy-chain-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.glidy-chain-card { padding: 18px; border-color: #e6e1ec; box-shadow: 0 6px 22px #2d1d4b05; }
+.glidy-chain-card h2 { overflow: hidden; margin: 13px 0 4px; font: 500 17px/1.3 Azeret, monospace; white-space: nowrap; text-overflow: ellipsis; }
+.glidy-chain-card-top time { color: #85808d; font-size: 9px; }
+.glidy-onchain-pill { background: #efedff; color: #4e40bd; }
+.glidy-card-actions { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid #efedf2; }
+.glidy-card-actions a { display: inline-flex; align-items: center; gap: 6px; color: #4c3eb1; font-size: 10px; }
+.glidy-card-actions button, .glidy-detail-tools button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 34px; min-height: 34px; border: 1px solid #e4e1e9; background: white; color: #514687; }
+.glidy-card-actions button[aria-pressed="true"] { color: #4c3eb1; }
+.glidy-launch-tools { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin: 0 0 16px; color: #77717f; font-size: 10px; }
+.glidy-launch-tools label { display: grid; gap: 5px; max-width: 340px; width: 100%; }
+.glidy-launch-tools input { width: 100%; padding: 10px 12px; border: 1px solid #e4e1e9; background: white; color: #1a1522; font-size: 11px; }
+.glidy-chain-empty { border-color: #ded9e9; padding: 22px; }
+.glidy-chain-empty a { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; color: #514687; font-size: 10px; }
+.glidy-launch-detail { margin-top: 18px; padding: 22px; border-color: #e1dce8; box-shadow: 0 8px 26px #2d1d4b07; }
+.glidy-launch-detail-head h2 { font: 500 21px/1.3 Azeret, monospace; }
+.glidy-launch-detail-head h2 span { color: #77717f; font-size: 13px; }
+.glidy-launch-detail-head > div > p:last-child { overflow-wrap: anywhere; margin-top: 6px; }
+.glidy-launch-facts { padding: 16px 0; border-top: 1px solid #efedf2; border-bottom: 1px solid #efedf2; }
+.glidy-launch-facts dd { white-space: normal; overflow-wrap: anywhere; line-height: 1.6; }
+.glidy-payouts h3, .glidy-event-list h3 { margin: 0 0 7px; font: 500 13px Azeret, monospace; }
+.glidy-event-list h3 span { color: #8b8592; font-size: 10px; font-weight: 400; }
+.glidy-detail-tools { display: flex; justify-content: space-between; gap: 12px; margin: 0 0 10px; }
+.glidy-detail-tools a { color: #514687; font-size: 10px; }
+.glidy-explorer-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; color: #514687; font-size: 10px; }
+@media (max-width: 1000px) {
+  .glidy-content { padding: 32px 28px 38px; }
+  .glidy-topbar { padding: 0 28px; }
+  .glidy-footer { margin: 0 28px; }
+  .glidy-chain-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .glidy-docs { grid-template-columns: 170px minmax(0, 1fr); gap: 30px; }
+}
+@media (max-width: 700px) {
+  .glidy-nav { transform: translateX(-100%); transition: transform .2s ease; }
+  .glidy-nav.is-open { transform: translateX(0); }
+  .glidy-nav-scrim { position: fixed; inset: 0; z-index: 45; display: block; border: 0; background: #1a152255; }
+  .glidy-shell-main { width: 100%; margin-left: 0; }
+  .glidy-topbar { height: 60px; justify-content: flex-start; padding: 0 18px; }
+  .glidy-mobile-menu { display: inline-grid; width: 34px; height: 34px; place-items: center; border: 1px solid #ebe5f0; background: white; }
+  .glidy-network { margin-left: auto; font-size: 9px; }
+  .glidy-content { padding: 26px 18px 34px; }
+  .glidy-footer { align-items: flex-start; flex-direction: column; margin: 0 18px; }
+  .glidy-chain-grid { grid-template-columns: 1fr; }
+  .glidy-chain-heading { align-items: flex-start; flex-direction: column; }
+  .glidy-chain-meta { align-items: flex-start; flex-direction: row; text-align: left; }
+  .glidy-chain-meta > span { max-width: 190px; }
+  .glidy-docs { grid-template-columns: 1fr; gap: 24px; }
+  .glidy-docs-nav { position: static; }
+  .glidy-docs-nav nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .glidy-docs-nav nav a { border-bottom: 1px solid #e8e4ec; }
+  .glidy-launch-detail { padding: 15px; }
+  .glidy-launch-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glidy-nav, .glidy-nav nav a { transition: none; }
+}

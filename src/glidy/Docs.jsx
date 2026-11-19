@@ -1,207 +1,81 @@
 import React, { useState } from "react";
-import { ChevronRight } from "lucide-react";
-import { Link, Button, Tag, Arrow, Footer, CostStudy } from "./ui";
-const pages = {
-  overview: [
-    "The path is the product.",
-    "GLIDY is a proposed token launchpad on Robinhood Chain. A creator can fund a build with a trade tax while committing how that tax falls before the first trade.",
-    [
-      [
-        "A lower-only rule",
-        "Each trade pays the lowest of the time schedule, creator ceiling and reached market-cap cap. None can increase the effective tax. The rule belongs to the Uniswap v4 pool hook; the token remains a plain ERC-20.",
-      ],
-      [
-        "The first trade starts the clock",
-        "For a 3% start, two-day hold, 0.2 percentage point step and seven-day interval, the first cut lands at day 2. The path reaches 1% on day 65. A Flat path has no automatic reduction.",
-      ],
-      [
-        "Creation limits",
-        "Starting tax is at most 5% per side. Buy and sell starting rates differ by at most 2 percentage points. A glide holds at most 30 days, steps every 1–30 days and reaches its floor within 365 days.",
-      ],
-      [
-        "Recipients and optional features",
-        "Creator proceeds can be paid in ETH or USDG to up to three launch-defined wallets. Later planned stages add a public 30–365 day build-fund stream and optional holder sharing weighted by holding time.",
-      ],
+import { ArrowUpRight, ChevronRight } from "lucide-react";
+import { Link } from "./storage";
+
+const docs = {
+  overview: {
+    title: "Launch with a tax. Lock how it falls.",
+    intro: "GLIDY is a token launchpad on Robinhood Chain. Launch settings are registered with the GLIDY hook, and the indexer makes launch configuration and pool activity easy to inspect.",
+    sections: [
+      ["A lower-only tax path", "Each launch defines buy and sell tax paths. The hook applies the current path and creator ceiling; the committed schedule can lower the tax over time. Pool trading also pays the configured platform fee."],
+      ["Fixed-supply tokens", "The factory creates a plain ERC-20 and initializes its GLIDY pool. Token transfers remain standard ERC-20 transfers; GLIDY pool rules apply to swaps routed through that pool."],
+      ["Indexed launch details", "GLIDY indexes factory and hook events, reads the current buy and sell taxes from the hook, and presents the launch parameters and pool events in one place."],
     ],
-  ],
-  fees: [
-    "Every fee, visible.",
-    "Each trade has the applicable pool tax plus a 0.3% base fee. Lower taxes also reduce GLIDY’s absolute tax share.",
-    [
-      [
-        "Normal tax split",
-        "GLIDY’s share in basis points is zero at zero tax; otherwise min(tax / 2, 10 + tax / 10), using integer arithmetic. At 3% tax, GLIDY receives 0.4% and the creator 2.6%. At 1%, the split is 0.2% and 0.8%. The 0.3% base fee is additional.",
-      ],
-      [
-        "Opening tax",
-        "Opening tax is split 90% to the creator and 10% to GLIDY. Buys pay the higher of opening and normal tax, never both added. Sells have no opening tax. Quick falls from 99% to zero over 3 seconds. Long starts at 25–99% over 30–300 seconds.",
-      ],
-      [
-        "Creation fee",
-        "A small flat creation fee in ETH is set at deployment. Its final amount has not been provided and is not quoted here.",
-      ],
+  },
+  fees: {
+    title: "Fees and proceeds",
+    intro: "The pool hook collects the configured base fee and applicable tax in the pool quote asset. Creator and platform shares accrue as claimable balances.",
+    sections: [
+      ["Base fee", "Each pool swap has a 0.3% base fee. It is separate from the launch’s tax path."],
+      ["Normal tax split", "For a normal tax, the platform share is the smaller of half the tax and 0.1% plus 10% of the tax. The rest of the tax is allocated to the creator. At 3% tax, the platform receives 0.4% and the creator receives 2.6%, in addition to the 0.3% base fee."],
+      ["Opening protection", "When an opening protection schedule applies to a buy, its tax replaces the normal buy tax when higher. Opening tax is split 10% to the platform and 90% to creator proceeds. Sells use the normal sell tax."],
+      ["Claims and creation fee", "Platform and creator amounts accrue for later withdrawal. The deployed factory creation fee is 0 ETH."],
     ],
-  ],
-  risks: [
-    "Know what the path can’t do.",
-    "Lower-only describes the pool tax. It does not make a project good or protect its token price.",
-    [
-      [
-        "Market and creator risk",
-        "Buyers carry market risk. GLIDY does not vet projects. A committed tax path cannot stop the creator selling tokens they hold. No audit or production contract deployment has been verified in this frontend build.",
-      ],
-      [
-        "The pool boundary",
-        "Tax applies only inside the GLIDY pool. Anyone can create a separate pool for the plain ERC-20 token. Wallet-to-wallet transfers are free; a 0.3% base fee remains on pool trades even at zero creator tax.",
-      ],
-      [
-        "Opening tax can be expensive",
-        "At the start of a 99% Long window, about 1% of a buy remains before the base fee. The live buy box must display the rate. There are no exempt wallets in the window except a disclosed creator first buy of at most 5% of supply in the creation transaction.",
-      ],
-      [
-        "Market-cap steps",
-        "Planned steps use the pool’s time-weighted price and require a full observation window, so quiet markets can latch late. A price held for the window can trigger an early cut, which only lowers the tax. Thresholds use quote-asset units; USD values displayed for ETH thresholds drift with ETH.",
-      ],
-      [
-        "Sample markets",
-        "All markets here are illustrative. No wallet execution, live liquidity, production quote provider or live market API is connected.",
-      ],
+  },
+  risks: {
+    title: "Pool and market risks",
+    intro: "A committed tax path describes the GLIDY pool’s fee rules. It does not predict token performance or remove market risk.",
+    sections: [
+      ["Pool boundary", "The hook enforces tax rules only for its GLIDY pool. The token is a standard ERC-20 and can be traded through other venues with different rules."],
+      ["Price and liquidity", "Token prices and available liquidity can change quickly. A lower tax does not guarantee liquidity, demand, or a sale at a particular price."],
+      ["Project assessment", "GLIDY displays onchain launch data. It does not provide a project endorsement, holder-concentration report, or automated safety score."],
+      ["Read the chain state", "The API indexer can lag the chain by its confirmation and polling interval. Current tax values are read from the hook when the detail endpoint is requested."],
     ],
-  ],
-  api: [
-    "A readable tax path.",
-    "The specification defines these integration contracts for markets, wallets, scanners and routers. They are not live endpoints in this frontend.",
-    [
-      [
-        "Markets and paths",
-        "GET /v1/markets returns current buy/sell tax, next step, floor and style. GET /v1/markets/:id/path returns the full path, milestones, creator cuts and chart points.",
-      ],
-      [
-        "Tax and quotes",
-        "GET /v1/markets/:id/tax returns buyBps, sellBps, nextStepAt, floorAt and style with a 30-second cache. GET /v1/markets/:id/quote?side=&amount= requires all-in results from a verified V4Quoter.",
-      ],
-      [
-        "Preview and events",
-        "POST /v1/preview validates a path and returns its schedule and fee table without a chain call. GET /v1/markets/:id/events returns steps, cuts, milestones and payouts.",
-      ],
-      [
-        "Onchain views",
-        "taxNow, taxAt, nextStep, timeToFloor, pathOf, snipeNow and allInCost are specified. taxAt is an upper bound that excludes unreached milestones. timeToFloor returns zero for Flat paths.",
-      ],
+  },
+  api: {
+    title: "GLIDY API",
+    intro: "The website uses a same-origin server proxy to read the authenticated backend API. The master API key stays in the server environment and is never sent to browser code.",
+    sections: [
+      ["Launch list", "GET /api/glidy/api/v1/launches?limit=100 returns indexed GLIDY launches. The limit parameter accepts integers from 1 to 100."],
+      ["Launch detail", "GET /api/glidy/api/v1/launches/{tokenAddress} returns indexed launch settings plus current buy_tax_pips and sell_tax_pips read from the hook. One million pips equals 100%."],
+      ["Pool events", "GET /api/glidy/api/v1/launches/{tokenAddress}/events returns up to 200 indexed launch and pool events, newest first."],
+      ["Indexer and readiness", "GET /api/glidy/api/v1/indexer reports indexer status and indexed block progress. GET /api/glidy/ready checks the backend database and Robinhood Chain RPC."],
+      ["Responses and limits", "Launch data is returned in a { data: ... } envelope. Token amounts and block numbers are decimal strings; preserve them as strings or BigInt. Authenticated requests are limited by client IP. On HTTP 429, retry after the number of seconds in the Retry-After header."],
     ],
-  ],
-  status: [
-    "Explore the product.",
-    "This is an interactive frontend built from the supplied GLIDY briefs.",
-    [
-      [
-        "Available in this preview",
-        "Market search and comparison, command search, tax-path charts, a tax lab, schedule activity, browser-local watchlists, fee arithmetic, creator-cut simulation, a guided launch designer and downloadable configuration.",
-      ],
-      [
-        "Production integration remains",
-        "Contracts, factory, locker, payout splitter, indexer, V4Quoter, public API and wallet signing need implementation and verification before live use. The preview does not send blockchain transactions.",
-      ],
-      [
-        "Planned rollout",
-        "Market-cap steps, hidden launch, opening batch and build-fund streams follow the core pad. Holder sharing and agent tools follow. $GLIDE and builder rebates are conditional on real launch volume.",
-      ],
+  },
+  privacy: {
+    title: "Privacy and browser data",
+    intro: "Saved launch addresses and interface preferences are stored in this browser. They are not written to the GLIDY API.",
+    sections: [
+      ["Saved launches", "The saved-launch list uses local browser storage and is available to other people who use the same browser profile."],
+      ["API key handling", "The backend key is held by the server-side website proxy. It is not a browser setting and should never be added to a VITE_* environment variable."],
+      ["Clear saved launches", "Use the control below to remove the saved launch list from this browser."],
     ],
-  ],
-  privacy: [
-    "This preview stays in your browser.",
-    "The frontend has no signup, analytics or server-side form collection. It stores watchlist IDs, launch drafts, uploaded draft logos and display preferences locally.",
-    [
-      [
-        "Browser storage",
-        "Watchlists, drafts (including uploaded logos), sidebar and motion preferences use localStorage on this origin. Others using the same browser profile can see them. Avoid sensitive information in draft fields.",
-      ],
-      [
-        "Removing local data",
-        "The button below clears the watchlist and launch draft stored by this preview. It does not affect a wallet or onchain records.",
-      ],
-      [
-        "Production policy",
-        "Authentication, live APIs and wallet providers are not connected. This page describes this preview only.",
-      ],
-    ],
-  ],
+  },
 };
+
+const navigation = [["overview", "Overview"], ["fees", "Fees and proceeds"], ["risks", "Risks"], ["api", "API"], ["privacy", "Privacy"]];
+
 export default function Docs({ page = "overview" }) {
-  let d = pages[page] || pages.overview,
-    [notice, setNotice] = useState("");
+  const current = docs[page] ? page : "overview";
+  const doc = docs[current];
+  const [notice, setNotice] = useState("");
   return (
-    <>
-      <main id="main" tabIndex={-1} className="container docs-layout">
-        <aside className="docs-nav">
-          <p className="eyebrow">GLIDY / DOCS</p>
-          {Object.entries({
-            overview: "Overview",
-            fees: "Fees & proceeds",
-            risks: "Honest limits",
-            api: "Tax-path API",
-            status: "Integration status",
-            privacy: "Preview privacy",
-          }).map(([k, n]) => (
-            <Link
-              key={k}
-              className={page === k ? "active" : ""}
-              to={"/docs/" + k}
-            >
-              {n}
-              <ChevronRight size={13} />
-            </Link>
-          ))}
-          <Link to="/explore" className="back-to-app">
-            Launchpad <Arrow />
-          </Link>
-        </aside>
-        <article className="docs-article">
-          <Tag>product documentation</Tag>
-          <h1>{d[0]}</h1>
-          <p className="docs-intro">{d[1]}</p>
-          {d[2].map(([h, p]) => (
-            <section key={h}>
-              <h2>{h}</h2>
-              <p>{p}</p>
-            </section>
-          ))}
-          {page === "fees" && <CostStudy />}
-          {page === "overview" && (
-            <div className="button-row">
-              <Button to="/launch" variant="dark">
-                try the path designer <Arrow />
-              </Button>
-              <Button to="/docs/risks">
-                read the limits <Arrow />
-              </Button>
-            </div>
-          )}
-          {page === "privacy" && (
-            <>
-              <Button
-                onClick={() => {
-                  try {
-                    localStorage.removeItem("glidepath-watchlist");
-                    localStorage.removeItem("glidepath-launch-draft");
-                    setNotice("Watchlist and draft cleared from this browser.");
-                  } catch {
-                    setNotice("Browser storage is unavailable.");
-                  }
-                }}
-              >
-                clear local preview data
-              </Button>
-              <p role="status">{notice}</p>
-            </>
-          )}
-          <div className="doc-meta">
-            Based on supplied product briefs dated 13 November 2026.
-            Implementation status is stated separately.
-          </div>
-        </article>
-      </main>
-      <Footer />
-    </>
+    <div className="glidy-docs">
+      <aside className="glidy-docs-nav">
+        <p className="glidy-api-kicker">GLIDY · DOCUMENTATION</p>
+        <nav aria-label="Documentation">
+          {navigation.map(([key, label]) => <Link key={key} to={`/docs/${key}`} className={current === key ? "active" : ""}>{label}<ChevronRight size={14} /></Link>)}
+        </nav>
+      </aside>
+      <article className="glidy-docs-article">
+        <p className="glidy-api-kicker">ROBINHOOD CHAIN · 4663</p>
+        <h1>{doc.title}</h1>
+        <p className="glidy-docs-intro">{doc.intro}</p>
+        {doc.sections.map(([heading, body]) => <section key={heading}><h2>{heading}</h2><p>{body}</p></section>)}
+        {current === "privacy" && <div className="glidy-docs-control"><button type="button" onClick={() => { try { localStorage.removeItem("glidepath-real-watchlist"); window.dispatchEvent(new Event("glidepath-storage")); setNotice("Saved launches cleared from this browser."); } catch { setNotice("Browser storage is unavailable."); } }}>Clear saved launches</button><span role="status">{notice}</span></div>}
+        {current === "api" && <a className="glidy-docs-external" href="https://glidepath-api-mym0.onrender.com/health/" target="_blank" rel="noreferrer">Backend health <ArrowUpRight size={14} /></a>}
+      </article>
+    </div>
   );
 }

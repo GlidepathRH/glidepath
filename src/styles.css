@@ -1,9 +1,4 @@
 @import "tailwindcss";
 @import "./glidy/styles.css";
-@import "./glidy/workspace.css";
-@import "./glidy/launch-cards.css";
-@import "./glidy/calm-workspace.css";
-@import "./glidy/discovery.css";
-@import "./glidy/launch-designer.css";
-@import "./glidy/soft-identity.css";
+@import "./glidy/glidy-app.css";
 @import "./glidy/glidy-launches.css";
