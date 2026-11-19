@@ -2778,6 +2778,15 @@ tbody tr:last-child td {
   }
 }
 /* GLIDY marketing home additions */
+.workspace .glidy-token-mark { display: grid; width: 74px; height: 74px; place-items: center; border-radius: 50%; color: #5f478d; background: linear-gradient(145deg, #f5f2fb, #e7e1f2); font: 500 22px Azeret, monospace; letter-spacing: -.08em; box-shadow: inset 0 1px 3px #55446a16, 0 4px 12px #55446a10; transition: transform .3s; }
+.workspace .real-card-image { color: inherit; }
+.workspace .real-card-image:hover .glidy-token-mark { transform: scale(1.025); }
+.workspace .launch-address { color: #71627d; font-size: 10px; }
+.workspace .real-market-list .real-market-card { display: grid; grid-template-columns: 1fr auto; }
+.workspace .real-market-list .real-card-stage { grid-row: 2; }
+.workspace .real-market-list .real-card-image { display: none; }
+.workspace .real-market-list .real-card-body { padding-top: 8px; }
+.workspace .real-market-list .real-market-card > footer { grid-column: 2; grid-row: 1 / span 2; align-self: center; border: 0; background: none; }
 .faq-list { display: grid; border-top: 1px solid var(--line); }
 .faq-list details { padding: 20px 4px; border-bottom: 1px solid var(--line); }
 .faq-list summary { cursor: pointer; font-family: var(--display); font-size: 16px; }

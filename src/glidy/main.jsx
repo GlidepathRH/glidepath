@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import Docs from "./Docs";
 import Home from "./Home";
 import { GlidyApiProvider } from "./GlidyApi";
-import { GlidyLaunchDetailPage, GlidyLaunches } from "./GlidyLaunches";
+import { GlidyLaunchDetailPage } from "./GlidyLaunches";
+import { GlidyLaunchBrowser } from "./GlidyLaunchBrowser";
 import { Workspace } from "./Workspace";
 
 function App() {
@@ -28,7 +29,7 @@ function App() {
         <GlidyLaunchDetailPage tokenAddress={parts[1]} />
       ) : (
         <GlidyApiProvider>
-          <GlidyLaunches savedOnly={page === "watchlist"} />
+          <GlidyLaunchBrowser watchlist={page === "watchlist"} />
         </GlidyApiProvider>
       )}
     </Workspace>
