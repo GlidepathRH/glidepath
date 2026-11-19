@@ -3,7 +3,7 @@ import { Menu, Search } from "lucide-react";
 import { Link, useSaved } from "./storage";
 import { WorkspaceNav } from "./WorkspaceNav";
 
-const routeTitles = { explore: "Launches", watchlist: "Saved launches", market: "Launch details", docs: "How it works" };
+const routeTitles = { explore: "Launches", watchlist: "Saved launches", launch: "Create a launch", market: "Launch details", docs: "How it works" };
 
 export function Workspace({ route, children }) {
   const [collapsed, setCollapsed] = useSaved("glidepath-sidebar-v4", true);

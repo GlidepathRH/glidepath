@@ -1,6 +1,6 @@
 # GLIDY roadmap
 
-This roadmap describes the current direction, without delivery dates. The protocol and API are live; the website is currently a read-only launch browser.
+This roadmap describes the current direction, without delivery dates. The protocol, API, and wallet launch flow are live.
 
 ## In place
 
@@ -8,10 +8,10 @@ This roadmap describes the current direction, without delivery dates. The protoc
 - Lower-only pool tax paths, creator/platform fee accrual, fixed-supply token creation, and optional creator first buy in the contracts.
 - PostgreSQL-backed indexer and authenticated read API for launches, current hook tax, settings, events, and indexer status.
 - GLIDY website with indexed launch browsing, saved launches, launch details, and product/API documentation.
+- Wallet-connected launch creation on Robinhood Chain, including creator payout splits and an optional atomic first buy. Native ETH is the supported quote asset in the current app.
 
 ## Next up
 
-- Connect the supplied GLIDY launch experience to wallet signing and the deployed factory so creators can submit launches from the app.
 - Improve launch discovery with reliable onchain or indexed pool data, while clearly labeling its source and update time.
 - Exercise the complete creator launch, indexing, detail, and trading lifecycle on Robinhood Chain before broadening access.
 

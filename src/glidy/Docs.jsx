@@ -7,6 +7,7 @@ const docs = {
     title: "Launch with a tax. Lock how it falls.",
     intro: "GLIDY is a token launchpad on Robinhood Chain. Launch settings are registered with the GLIDY hook, and the indexer makes launch configuration and pool activity easy to inspect.",
     sections: [
+      ["Create a launch", "Connect an EVM wallet on Robinhood Chain and submit the GLIDY factory transaction from the launch page. The app currently supports native ETH as the quote asset. The wallet displays the transaction and required ETH before signing."],
       ["A lower-only tax path", "Each launch defines buy and sell tax paths. The hook applies the current path and creator ceiling; the committed schedule can lower the tax over time. Pool trading also pays the configured platform fee."],
       ["Fixed-supply tokens", "The factory creates a plain ERC-20 and initializes its GLIDY pool. Token transfers remain standard ERC-20 transfers; GLIDY pool rules apply to swaps routed through that pool."],
       ["Indexed launch details", "GLIDY indexes factory and hook events, reads the current buy and sell taxes from the hook, and presents the launch parameters and pool events in one place."],

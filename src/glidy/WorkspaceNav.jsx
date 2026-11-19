@@ -2,11 +2,12 @@ import React, { useRef, useState } from "react";
 import { GripVertical, PanelLeftOpen, PanelLeftClose, ArrowUpRight, X } from "lucide-react";
 import { Link, useSaved } from "./storage";
 import { SoftDockIcon } from "./SoftDockIcon";
-import { DiscoverGlyph, SavedGlyph, GuideGlyph } from "./LaunchIcons";
+import { DiscoverGlyph, SavedGlyph, GuideGlyph, CreateGlyph } from "./LaunchIcons";
 
 const navigation = [
   ["explore", "Launches", DiscoverGlyph],
   ["watchlist", "Saved launches", SavedGlyph],
+  ["launch", "Create a launch", CreateGlyph],
   ["docs", "How it works", GuideGlyph],
 ];
 

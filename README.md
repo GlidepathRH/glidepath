@@ -25,6 +25,7 @@
 | --- | --- |
 | Website | [glidy.fun](https://www.glidy.fun) |
 | Main app | [Explore launches](https://www.glidy.fun/#/explore) |
+| Create a launch | [Open the wallet launch flow](https://www.glidy.fun/#/launch) |
 | X | [@glidepathrh](https://x.com/glidepathrh) |
 | GitHub | [GlidepathRH/glidepath](https://github.com/GlidepathRH/glidepath) |
 | Roadmap | [Project roadmap](./ROADMAP.md) |
@@ -34,6 +35,7 @@
 ## How it works
 
 - A creator sets the token supply, quote asset, initial liquidity, buy and sell tax paths, and optional opening protection.
+- The app's wallet launch flow connects to Robinhood Chain and submits the factory transaction. Native ETH is currently the supported quote asset; launch creation requires the creator to approve the funding and gas in their wallet.
 - The factory creates a fixed-supply ERC-20 and initializes its Uniswap v4 pool on Robinhood Chain (chain ID `4663`).
 - The GLIDY hook applies the pool's configured base fee and current tax. The tax path and creator ceiling can only move down.
 - Creator and platform fee shares accrue as claimable balances.
@@ -65,7 +67,7 @@ Set `GLIDY_API_BASE_URL` to a running backend. `MASTER_API_KEY` is a server-only
 pnpm dev
 ```
 
-The site runs at `http://127.0.0.1:5184`. Open `/` for the GLIDY website or `/#/explore` for the launch browser.
+The site runs at `http://127.0.0.1:5184`. Open `/` for the GLIDY website, `/#/explore` for the launch browser, or `/#/launch` to create a launch with an EVM wallet on Robinhood Chain.
 
 ### Backend
 
