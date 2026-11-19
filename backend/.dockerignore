@@ -1,3 +1,5 @@
+**/*.test.ts
+**/*.spec.ts
 .env
 .env.*
 !.env.example

@@ -6,7 +6,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test src/glidy/*.test.mjs src/routes/api/glidy/*.test.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.1",

@@ -8,41 +8,12 @@ import {
 } from "viem";
 import { indexedEvents, hookReadAbi, tokenReadAbi } from "../chain/abi";
 import { config } from "../config";
+import { rpcRangeLimit, safeRpcFailure } from "./rpc-errors";
 import { indexerStatus } from "./status";
 
 const INDEXER_NAME = "glidepath-launches-v1";
 const HOOK_ADDRESS = config.GLIDEPATH_HOOK_ADDRESS;
 const FACTORY_ADDRESS = config.GLIDEPATH_FACTORY_ADDRESS;
-
-function rpcRangeLimit(error: unknown): bigint | null {
-  if (!error || typeof error !== "object") return null;
-  const value = error as { details?: unknown; cause?: unknown };
-  const cause = value.cause && typeof value.cause === "object"
-    ? value.cause as { details?: unknown; shortMessage?: unknown }
-    : undefined;
-  for (const message of [value.details, cause?.details, cause?.shortMessage]) {
-    if (typeof message !== "string") continue;
-    const match = message.match(/ranges? over (\d+) blocks? (?:are|is) not supported/i);
-    if (match) return BigInt(match[1]);
-  }
-  return null;
-}
-
-function safeRpcFailure(error: unknown): Record<string, unknown> {
-  if (!error || typeof error !== "object") return { name: "UnknownError" };
-  const value = error as { name?: unknown; cause?: unknown };
-  const cause = value.cause && typeof value.cause === "object"
-    ? value.cause as { code?: unknown; details?: unknown }
-    : undefined;
-  const allowedDetails = typeof cause?.details === "string"
-    ? cause.details.match(/ranges? over \d+ blocks? (?:are|is) not supported/i)?.[0]
-    : undefined;
-  return {
-    name: typeof value.name === "string" ? value.name : "UnknownError",
-    ...(cause?.code !== undefined && ["string", "number"].includes(typeof cause.code) ? { code: cause.code } : {}),
-    ...(allowedDetails ? { detail: allowedDetails } : {}),
-  };
-}
 
 type TaxPath = {
   startPips: bigint | number;

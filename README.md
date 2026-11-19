@@ -1,72 +1,115 @@
 # GLIDY
 
-![CI](https://github.com/GlidepathRH/glidepath/actions/workflows/backend.yml/badge.svg)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
-![Bun](https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white)
-![TanStack Start](https://img.shields.io/badge/TanStack_Start-1.x-FF4154?logo=tanstack&logoColor=white)
-![Robinhood Chain](https://img.shields.io/badge/Robinhood_Chain-4663-00C805)
+GLIDY is a token launch platform on Robinhood Chain. Creators configure a buy and sell tax path before launch. The Uniswap v4 pool hook applies those rules, and the committed rates can step down over time or be lowered by the creator. The token remains a standard fixed-supply ERC-20; GLIDY's pool rules apply to swaps through that pool.
 
-**Launch with a tax. Lock how it falls.**
+GLIDY is built around making launch funding and pool fees understandable up front: show the configured tax path, report current onchain rates, and make launch activity inspectable.
 
-GLIDY is a token launchpad on Robinhood Chain (4663). A creator commits a pool tax path before trading begins; time steps and creator cuts can lower the tax, while the pool hook prevents it from rising. The token remains a plain ERC-20, and tax applies in its GLIDY pool.
+## Links
 
-## Product shape
-
-| Area | Initial scope |
+| | |
 | --- | --- |
-| Launchpad | Configure a token, tax schedule, fee routing, and launch protections |
-| Pool hook | Enforce lower-only pool fees and expose the current tax path |
-| API | Publish a queryable view of launches and their onchain tax paths |
-| Chain | Robinhood Chain, chain ID 4663; Uniswap v4 |
+| Website | [glidy.fun](https://www.glidy.fun) |
+| Main app | [Explore launches](https://www.glidy.fun/#/explore) |
+| X | [@glidepathrh](https://x.com/glidepathrh) |
+| GitHub | [GlidepathRH/glidepath](https://github.com/GlidepathRH/glidepath) |
+| Roadmap | [Project roadmap](./ROADMAP.md) |
+| Product docs | [How GLIDY works](https://www.glidy.fun/#/docs/overview) |
+| API docs | [GLIDY API](https://www.glidy.fun/#/docs/api) |
 
-The first contract release, **Hydrogen (H)**, is deployed on Robinhood Chain. Deployment addresses, transactions, and the version naming convention are recorded under `/contracts/deployments` and in the contracts README. The backend provides a read-only launch and tax-path API.
+## How it works
 
-## Repository layout
+- A creator sets the token supply, quote asset, initial liquidity, buy and sell tax paths, and optional opening protection.
+- The factory creates a fixed-supply ERC-20 and initializes its Uniswap v4 pool on Robinhood Chain (chain ID `4663`).
+- The GLIDY hook applies the pool's configured base fee and current tax. The tax path and creator ceiling can only move down.
+- Creator and platform fee shares accrue as claimable balances.
+- The backend indexes factory and hook events in PostgreSQL. The website reads launches, current hook tax, launch settings, events, and indexer progress through a server-side API proxy.
 
-| Path | Purpose |
-| --- | --- |
-| `/src` | Vite + TanStack Start frontend |
-| `/src/glidy` | GLIDY launch browser, API client, and product documentation |
-| `/public` | GLIDY brand assets and local fonts |
-| `/src/routes/api/glidy` | Same-origin server proxy for protected backend reads |
-| `/backend` | Bun + Express + TypeScript API and PostgreSQL migration runner |
-| `/contracts` | Foundry workspace for the Uniswap v4 hook and launch contracts |
-| `/.github/workflows` | Frontend, backend, and contract checks; optional Render hook |
+The first contract release is **Hydrogen (H)**. Deployment addresses and transaction records are in [`contracts/deployments/robinhood-mainnet.json`](contracts/deployments/robinhood-mainnet.json). See the [contract documentation](contracts/README.md) for current behavior and limitations.
 
-## Getting started
+## Run locally
 
-Prerequisites: Node.js 22.12+ and pnpm; PostgreSQL and Foundry for backend/contract work.
+### Requirements
+
+- Node.js 24 and pnpm
+- Bun
+- PostgreSQL for the backend
+- Foundry and Git submodules for contract development
+
+### Frontend
+
+From the repository root:
 
 ```sh
-# Frontend, from the repository root
 pnpm install
 cp .env.example .env
-# Set MASTER_API_KEY (request it from Skipp) and GLIDY_API_BASE_URL in this
-# server environment. MASTER_API_KEY must never be exposed as a VITE_ variable.
-pnpm dev
+```
 
-# Backend, in another terminal
+Set `GLIDY_API_BASE_URL` to a running backend. `MASTER_API_KEY` is a server-only secret required by the API proxy; obtain a development key from the project maintainer or run the backend locally with the same key. Never expose it in a `VITE_*` variable.
+
+```sh
+pnpm dev
+```
+
+The site runs at `http://127.0.0.1:5184`. Open `/` for the GLIDY website or `/#/explore` for the launch browser.
+
+### Backend
+
+In another terminal:
+
+```sh
 cd backend
 bun install
 cp .env.example .env
-# Set DATABASE_URL, RHC_RPC_URL, MASTER_API_KEY, and FRONTEND_URL, then:
+```
+
+Set `DATABASE_URL`, `RHC_RPC_URL`, `MASTER_API_KEY`, and `FRONTEND_URL` in `backend/.env`. The example file includes the deployed Hydrogen contract addresses and starting block. Apply migrations and run the service:
+
+```sh
 bun run dev
+```
+
+The API listens on port `3001` by default. `/health/` is public; other API routes require a bearer key. See [`backend/README.md`](backend/README.md) and [`backend/openapi.yaml`](backend/openapi.yaml) for configuration and endpoint details.
+
+### Contracts
+
+From the repository root:
+
+```sh
+git submodule update --init --recursive
+cd contracts
+cp .env.example .env
+forge build
+forge test
+```
+
+Deployment requires a funded deployer, a treasury address, and a production RPC. Keep private keys in the ignored `contracts/.env`; never commit them. See [`contracts/README.md`](contracts/README.md) before deploying.
+
+## Tests and checks
+
+```sh
+# Frontend API client, launch data and proxy policy
+pnpm test
+pnpm typecheck
+pnpm build
+
+# Backend auth, routes, rate limits and indexer
+cd backend
+bun run test
+bun run check
 
 # Contracts
 cd ../contracts
-cp .env.example .env
-forge build
+forge test
 ```
 
-The frontend loads indexed GLIDY launches, launch details, current hook taxes and pool events through a same-origin TanStack server proxy. The proxy attaches the server-only `MASTER_API_KEY` and allows only documented read routes. Set `GLIDY_API_BASE_URL` and `MASTER_API_KEY` in the frontend host's server environment; never expose the key to browser code or use a `VITE_` prefix.
+## Repository layout
 
-## Deployment
+- `src/` — TanStack Start website, launch browser, API client and server proxy
+- `public/` — GLIDY brand assets and fonts
+- `backend/` — Bun/Express API, PostgreSQL migrations and chain indexer
+- `contracts/` — Solidity hook, factory, tests and deployment records
+- `.github/workflows/` — frontend, backend and contract CI
 
-- **Frontend:** Vercel at `glidy.fun`; set `GLIDY_API_BASE_URL` and `MASTER_API_KEY` as server environment variables.
-- **Backend:** Render, rooted at `/backend`; set `DATABASE_URL`, `RHC_RPC_URL`, `MASTER_API_KEY`, `FRONTEND_URL`, and the platform `PORT`. The optional workflow deploy hook uses `RENDER_DEPLOY_HOOK_URL`.
-- **Contracts:** deployed on Robinhood Chain; see `contracts/deployments/robinhood-mainnet.json` for the contract and treasury addresses.
+## License
 
-## Stack
-
-TypeScript · React · Vite · TanStack Start · Bun · Express · PostgreSQL · Solidity · Foundry · Uniswap v4 · Robinhood Chain
+See [`LICENSE`](LICENSE).

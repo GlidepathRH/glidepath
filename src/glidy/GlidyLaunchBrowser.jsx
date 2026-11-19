@@ -1,13 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { ArrowRight, ArrowUpRight, Compass, LayoutGrid, List, RotateCw, Search, Star, X } from "lucide-react";
 import { Link, useSaved } from "./storage";
 import { useGlidyApi } from "./GlidyApi";
-
-function pct(value) {
-  const pips = Number(value);
-  return Number.isFinite(pips) ? `${(pips / 10_000).toLocaleString(undefined, { maximumFractionDigits: 2 })}%` : "—";
-}
-function short(value) { return typeof value === "string" && value.length > 14 ? `${value.slice(0, 6)}…${value.slice(-4)}` : value || "—"; }
+import { filterAndSortLaunches, formatTaxPips as pct, shortAddress as short } from "./launch-data.mjs";
 
 function LaunchCard({ launch, saved, setSaved }) {
   const id = launch.token_address.toLowerCase();
@@ -33,11 +28,7 @@ export function GlidyLaunchBrowser({ watchlist = false }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("newest");
   const [view, setView] = useSaved("glidepath-browse-view-v5", "grid");
-  const savedIds = new Set(saved.map((item) => String(item).toLowerCase()));
-  const visible = useMemo(() => launches
-    .filter((launch) => !watchlist || savedIds.has(launch.token_address.toLowerCase()))
-    .filter((launch) => `${launch.token_name} ${launch.token_symbol} ${launch.token_address}`.toLowerCase().includes(query.trim().toLowerCase()))
-    .sort((a, b) => sort === "name" ? a.token_name.localeCompare(b.token_name) : Number(b.launch_block_timestamp) - Number(a.launch_block_timestamp)), [launches, watchlist, saved, query, sort]);
+  const visible = filterAndSortLaunches(launches, { watchlist, saved, query, sort });
   const clear = () => { setQuery(""); setSort("newest"); };
 
   return <div className="market-browser">

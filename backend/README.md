@@ -35,6 +35,10 @@ Large token amounts are returned as decimal strings. Tax rates are integers wher
 ```sh
 bun install
 bun run dev
+
+# Run backend auth, API-route, indexer, and RPC error unit tests
+bun run test
+bun run check
 ```
 
 The server applies SQL files in `db/migrations/` at startup. The launch tables are created by `001_launch_indexer.sql`; migrations `002_api_auth_rate_limits.sql` and `003_api_client_rate_limits.sql` create the PostgreSQL-backed failed-auth and authenticated-request limits.

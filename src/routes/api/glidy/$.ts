@@ -1,17 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isIP } from "node:net";
+import { isAllowedGlidyReadPath } from "./proxy-policy.mjs";
 
 function jsonError(status: number, error: string): Response {
   return Response.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
-}
-
-function isAllowedReadPath(path: string): boolean {
-  return (
-    path === "ready" ||
-    path === "api/v1/indexer" ||
-    path === "api/v1/launches" ||
-    /^api\/v1\/launches\/0x[0-9a-fA-F]{40}(?:\/events)?$/.test(path)
-  );
 }
 
 export const Route = createFileRoute("/api/glidy/$")({
@@ -19,7 +11,7 @@ export const Route = createFileRoute("/api/glidy/$")({
     handlers: {
       GET: async ({ request, params }) => {
         const path = (params._splat ?? "").replace(/^\/+|\/+$/g, "");
-        if (!isAllowedReadPath(path)) return jsonError(404, "API route not found");
+        if (!isAllowedGlidyReadPath(path)) return jsonError(404, "API route not found");
 
         const apiBase = process.env["GLIDY_API_BASE_URL"];
         const apiKey = process.env["MASTER_API_KEY"];

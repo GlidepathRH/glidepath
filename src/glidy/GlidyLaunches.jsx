@@ -2,18 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, LoaderCircle, RotateCw, Star } from "lucide-react";
 import { Link, useSaved } from "./storage";
 import { apiGet, useGlidyApi } from "./GlidyApi";
-
-function percentFromPips(value) {
-  const pips = Number(value);
-  if (!Number.isFinite(pips)) return "—";
-  return `${(pips / 10_000).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
-}
-
-function shortAddress(address) {
-  return typeof address === "string" && address.length > 13
-    ? `${address.slice(0, 6)}…${address.slice(-4)}`
-    : address || "—";
-}
+import { formatTaxPips as percentFromPips, shortAddress } from "./launch-data.mjs";
 
 function dateLabel(seconds) {
   const value = Number(seconds);
