@@ -1,4 +1,5 @@
 @import "tailwindcss";
 @import "./glidy/styles.css";
+@import "./glidy/soft-identity.css";
 @import "./glidy/glidy-app.css";
 @import "./glidy/glidy-launches.css";

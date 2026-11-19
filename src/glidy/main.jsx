@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Docs from "./Docs";
+import Home from "./Home";
 import { GlidyApiProvider } from "./GlidyApi";
 import { GlidyLaunchDetailPage, GlidyLaunches } from "./GlidyLaunches";
 import { Workspace } from "./Workspace";
@@ -14,10 +15,12 @@ function App() {
   }, []);
 
   const parts = route.split("/").filter(Boolean);
-  const requested = parts[0] || "explore";
-  const page = ["docs", "watchlist", "market"].includes(requested) ? requested : "explore";
-  const title = page === "docs" ? `How it works · ${parts[1] || "overview"} · GLIDY` : `${page === "watchlist" ? "Saved launches" : "GLIDY launches"} · GLIDY`;
+  const requested = parts[0] || "home";
+  const page = ["home", "explore", "docs", "watchlist", "market"].includes(requested) ? requested : "home";
+  const title = page === "docs" ? `How it works · ${parts[1] || "overview"} · GLIDY` : page === "home" ? "GLIDY · Launch with a tax. Lock how it falls." : `${page === "watchlist" ? "Saved launches" : "GLIDY launches"} · GLIDY`;
   useEffect(() => { document.title = title; }, [title]);
+
+  if (page === "home") return <Home />;
 
   return (
     <Workspace route={page}>
