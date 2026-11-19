@@ -14,6 +14,36 @@ const INDEXER_NAME = "glidepath-launches-v1";
 const HOOK_ADDRESS = config.GLIDEPATH_HOOK_ADDRESS;
 const FACTORY_ADDRESS = config.GLIDEPATH_FACTORY_ADDRESS;
 
+function rpcRangeLimit(error: unknown): bigint | null {
+  if (!error || typeof error !== "object") return null;
+  const value = error as { details?: unknown; cause?: unknown };
+  const cause = value.cause && typeof value.cause === "object"
+    ? value.cause as { details?: unknown; shortMessage?: unknown }
+    : undefined;
+  for (const message of [value.details, cause?.details, cause?.shortMessage]) {
+    if (typeof message !== "string") continue;
+    const match = message.match(/ranges? over (\d+) blocks? (?:are|is) not supported/i);
+    if (match) return BigInt(match[1]);
+  }
+  return null;
+}
+
+function safeRpcFailure(error: unknown): Record<string, unknown> {
+  if (!error || typeof error !== "object") return { name: "UnknownError" };
+  const value = error as { name?: unknown; cause?: unknown };
+  const cause = value.cause && typeof value.cause === "object"
+    ? value.cause as { code?: unknown; details?: unknown }
+    : undefined;
+  const allowedDetails = typeof cause?.details === "string"
+    ? cause.details.match(/ranges? over \d+ blocks? (?:are|is) not supported/i)?.[0]
+    : undefined;
+  return {
+    name: typeof value.name === "string" ? value.name : "UnknownError",
+    ...(cause?.code !== undefined && ["string", "number"].includes(typeof cause.code) ? { code: cause.code } : {}),
+    ...(allowedDetails ? { detail: allowedDetails } : {}),
+  };
+}
+
 type TaxPath = {
   startPips: bigint | number;
   floorPips: bigint | number;
@@ -250,6 +280,8 @@ async function saveLaunch(client: PoolClient, launch: IndexedLaunch): Promise<vo
 }
 
 export class GlidepathIndexer {
+  #rpcLogRange = config.INDEXER_BLOCK_RANGE;
+
   constructor(
     private readonly db: Pool,
     private readonly publicClient: PublicClient,
@@ -258,9 +290,14 @@ export class GlidepathIndexer {
   }
 
   async pollOnce(): Promise<void> {
-    const client = await this.db.connect();
+    let client: PoolClient | undefined;
     let lockAcquired = false;
+    let stage = "database.connect";
+    let fromBlock: bigint | null = null;
+    let endBlock: bigint | null = null;
     try {
+      client = await this.db.connect();
+      stage = "database.lock";
       const lock = await client.query<{ locked: boolean }>(
         "SELECT pg_try_advisory_lock($1) AS locked",
         [config.RHC_CHAIN_ID],
@@ -277,7 +314,8 @@ export class GlidepathIndexer {
         "SELECT next_block FROM chain_indexer_state WHERE chain_id = $1 AND indexer_name = $2",
         [config.RHC_CHAIN_ID, INDEXER_NAME],
       );
-      const fromBlock = BigInt(cursorResult.rows[0].next_block);
+      fromBlock = BigInt(cursorResult.rows[0].next_block);
+      stage = "rpc.block_number";
       const head = await this.publicClient.getBlockNumber();
       const confirmations = BigInt(config.INDEXER_CONFIRMATIONS);
       const finalizedHead = head > confirmations ? head - confirmations : 0n;
@@ -287,13 +325,40 @@ export class GlidepathIndexer {
       }
 
       const toBlock = fromBlock + BigInt(config.INDEXER_BLOCK_RANGE) - 1n;
-      const endBlock = toBlock < finalizedHead ? toBlock : finalizedHead;
+      endBlock = toBlock < finalizedHead ? toBlock : finalizedHead;
       indexerStatus.begin(fromBlock);
-      const logs = await this.publicClient.getLogs({
-        address: [FACTORY_ADDRESS, HOOK_ADDRESS],
-        fromBlock,
-        toBlock: endBlock,
-      });
+      const logs: Log[] = [];
+      let logCursor = fromBlock;
+      while (logCursor <= endBlock) {
+        const logRange = BigInt(this.#rpcLogRange);
+        const logEnd = logCursor + logRange - 1n < endBlock
+          ? logCursor + logRange - 1n
+          : endBlock;
+        stage = "rpc.get_logs";
+        try {
+          logs.push(...await this.publicClient.getLogs({
+            address: [FACTORY_ADDRESS, HOOK_ADDRESS],
+            fromBlock: logCursor,
+            toBlock: logEnd,
+          }));
+          logCursor = logEnd + 1n;
+        } catch (error) {
+          const providerLimit = rpcRangeLimit(error);
+          if (providerLimit !== null && providerLimit > 0n && providerLimit < BigInt(this.#rpcLogRange)) {
+            const previousRange = this.#rpcLogRange;
+            this.#rpcLogRange = Number(providerLimit);
+            console.warn(JSON.stringify({
+              level: "warn",
+              event: "indexer.rpc_log_range_limited",
+              chainId: config.RHC_CHAIN_ID,
+              previousRange,
+              effectiveRange: this.#rpcLogRange,
+            }));
+            continue;
+          }
+          throw error;
+        }
+      }
 
       const events = logs.flatMap((log) => {
         const event = decode(log);
@@ -310,12 +375,14 @@ export class GlidepathIndexer {
       const timestamps = new Map<string, bigint>();
       await Promise.all(
         blockNumbers.map(async (blockNumber) => {
+          stage = "rpc.get_block_timestamp";
           const block = await this.publicClient.getBlock({ blockNumber: BigInt(blockNumber) });
           timestamps.set(blockNumber, block.timestamp);
         }),
       );
       const launches: IndexedLaunch[] = [];
       for (const event of events) {
+        stage = "rpc.read_launch";
         const timestamp = event.log.blockNumber
           ? timestamps.get(event.log.blockNumber.toString())
           : undefined;
@@ -323,6 +390,7 @@ export class GlidepathIndexer {
         if (launch) launches.push(launch);
       }
 
+      stage = "database.write";
       await client.query("BEGIN");
       try {
         for (const event of events) {
@@ -385,17 +453,50 @@ export class GlidepathIndexer {
         throw error;
       }
       indexerStatus.complete(endBlock + 1n, endBlock);
+      console.info(JSON.stringify({
+        level: "info",
+        event: "indexer.poll_complete",
+        chainId: config.RHC_CHAIN_ID,
+        fromBlock: fromBlock.toString(),
+        indexedThroughBlock: endBlock.toString(),
+        blockCount: (endBlock - fromBlock + 1n).toString(),
+        logCount: logs.length,
+        eventCount: events.length,
+        newLaunches: launches.length,
+        rpcLogRange: this.#rpcLogRange,
+      }));
+    } catch (error) {
+      indexerStatus.fail(error);
+      console.error(JSON.stringify({
+        level: "error",
+        event: "indexer.poll_failed",
+        chainId: config.RHC_CHAIN_ID,
+        stage,
+        fromBlock: fromBlock?.toString() ?? null,
+        throughBlock: endBlock?.toString() ?? null,
+        rpcLogRange: this.#rpcLogRange,
+        error: safeRpcFailure(error),
+      }));
+      throw error;
     } finally {
-      if (lockAcquired) {
+      if (lockAcquired && client) {
         await client.query("SELECT pg_advisory_unlock($1)", [config.RHC_CHAIN_ID]);
       }
-      client.release();
+      client?.release();
     }
   }
 }
 
 export function startIndexer(db: Pool, publicClient: PublicClient): () => Promise<void> {
   const indexer = new GlidepathIndexer(db, publicClient);
+  console.info(JSON.stringify({
+    level: "info",
+    event: "indexer.started",
+    chainId: config.RHC_CHAIN_ID,
+    deploymentBlock: config.RHC_DEPLOYMENT_BLOCK.toString(),
+    configuredBatchBlocks: config.INDEXER_BLOCK_RANGE,
+    pollIntervalMs: config.INDEXER_POLL_INTERVAL_MS,
+  }));
   let stopped = false;
   let inFlight: Promise<void> | null = null;
   const run = () => {
@@ -404,8 +505,6 @@ export function startIndexer(db: Pool, publicClient: PublicClient): () => Promis
       .pollOnce()
       .catch((error: unknown) => {
         indexerStatus.fail(error);
-        const name = error instanceof Error ? error.name : "UnknownError";
-        console.error(`Robinhood indexer poll failed (${name})`);
       })
       .finally(() => {
         inFlight = null;

@@ -6,7 +6,7 @@ The backend serves a read-only view of Glidepath launches on Robinhood Chain. It
 
 Copy `.env.example` to `.env`. Set `DATABASE_URL`, `RHC_RPC_URL`, `MASTER_API_KEY`, and `FRONTEND_URL`. Set `MASTER_API_KEY` to a random secret with at least 32 characters; configure the same value in the hosting provider's environment. All routes except `/health/` require `Authorization: Bearer <MASTER_API_KEY>`. If the key is missing, protected routes fail closed with `503`; the health route remains public. The current chain ID, factory, hook and deployment block are prefilled for the Hydrogen deployment. EVM addresses are validated as 20-byte hex and normalized to checksum casing at startup. The current read-only API does not access or use the treasury private key configured in the local environment.
 
-The indexer waits for `INDEXER_CONFIRMATIONS` blocks, scans up to `INDEXER_BLOCK_RANGE` blocks per poll, and resumes from its PostgreSQL cursor after restart. A PostgreSQL advisory lock prevents multiple backend instances from indexing the same range concurrently.
+The indexer waits for `INDEXER_CONFIRMATIONS` blocks, scans up to `INDEXER_BLOCK_RANGE` blocks per poll, and resumes from its PostgreSQL cursor after restart. It splits each poll batch into provider-sized `eth_getLogs` requests and learns a smaller block-range cap when the RPC reports one. A PostgreSQL advisory lock prevents multiple backend instances from indexing the same range concurrently. Startup, migration, poll progress, RPC range limits and failures are logged as structured JSON; logs omit RPC URLs and credentials.
 
 ## CI and publishing
 
