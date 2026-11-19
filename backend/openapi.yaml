@@ -249,7 +249,7 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     RateLimited:
-      description: More than 10 failed authentication attempts from this IP in 15 minutes.
+      description: More than 10 failed authentication attempts or 120 authenticated API requests from this IP in 15 minutes.
       headers:
         Retry-After:
           description: Seconds until the current rate-limit window expires.

@@ -1,0 +1,105 @@
+.glidy-chain-section {
+  margin: 0 0 30px;
+  padding: 22px;
+  border: 1px solid var(--line, #e4e1e9);
+  background: linear-gradient(120deg, #fbfaff 0%, #fff 62%, #faf9ff 100%);
+}
+.glidy-chain-heading,
+.glidy-chain-meta,
+.glidy-chain-card-top,
+.glidy-card-tax-row,
+.glidy-event-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.glidy-chain-heading { margin-bottom: 18px; }
+.glidy-chain-heading h2 { margin: 4px 0 5px; color: #1a1522; font: 500 20px/1.25 Azeret, monospace; }
+.glidy-chain-heading p:not(.glidy-api-kicker) { margin: 0; color: #77717f; font-size: 11px; }
+.glidy-api-kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: #6254bb;
+  font: 500 9px/1.4 Matter, monospace;
+  letter-spacing: .12em;
+}
+.glidy-api-kicker > span { width: 6px; height: 6px; border-radius: 50%; background: #7060d3; }
+.glidy-chain-meta { color: #77717f; font-size: 9px; }
+.glidy-chain-meta button,
+.glidy-api-state button,
+.glidy-detail-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #e4e1e9;
+  background: #fff;
+  color: #514687;
+  cursor: pointer;
+}
+.glidy-chain-meta button { width: 31px; height: 31px; }
+.glidy-chain-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; }
+.glidy-chain-card { min-width: 0; padding: 15px; border: 1px solid #e7e3ee; background: #fff; }
+.glidy-chain-card-top { color: #85808d; font-size: 9px; }
+.glidy-onchain-pill { padding: 4px 6px; background: #f0edff; color: #5242bb; letter-spacing: .08em; }
+.glidy-chain-card h3 { overflow: hidden; margin: 13px 0 4px; color: #211b2c; font: 500 16px/1.3 Azeret, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.glidy-chain-symbol { overflow: hidden; margin: 0; color: #78727f; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.glidy-chain-symbol span { padding: 0 3px; color: #b5afbd; }
+.glidy-card-tax-row { align-items: flex-start; flex-direction: column; gap: 7px; margin: 15px 0; color: #4d4657; font-size: 10px; }
+.glidy-card-tax-row span { display: inline-flex; align-items: center; gap: 5px; }
+.glidy-card-tax-row svg { color: #6e5ed1; }
+.glidy-view-launch { display: inline-flex; align-items: center; gap: 6px; border: 0; padding: 0; background: transparent; color: #4c3eb1; cursor: pointer; font: 500 10px Matter, monospace; }
+.glidy-view-launch:hover { text-decoration: underline; }
+.glidy-chain-empty { display: flex; align-items: center; gap: 12px; padding: 16px; background: #fff; border: 1px dashed #dcd7e8; }
+.glidy-empty-mark { display: grid; width: 31px; height: 31px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #f0edff; color: #5546bc; font: 500 13px Azeret, monospace; }
+.glidy-chain-empty strong { color: #2a2434; font: 500 12px Matter, monospace; }
+.glidy-chain-empty p { margin: 4px 0 0; color: #77717f; font-size: 10px; }
+.glidy-api-state { display: flex; align-items: center; gap: 9px; margin: 0; padding: 13px; background: #fff; color: #6d6677; font-size: 10px; }
+.glidy-api-state.is-error { justify-content: space-between; border: 1px solid #ead9de; color: #8b3c51; }
+.glidy-api-state button { padding: 7px 9px; font: inherit; }
+.glidy-spin { animation: glidy-spin .9s linear infinite; }
+@keyframes glidy-spin { to { transform: rotate(360deg); } }
+.glidy-launch-detail { margin-top: 14px; padding: 18px; border: 1px solid #ded9e9; background: #fff; }
+.glidy-launch-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }
+.glidy-launch-detail-head h3 { margin: 5px 0; color: #211b2c; font: 500 18px Azeret, monospace; }
+.glidy-launch-detail-head h3 span { color: #77717f; font-size: 12px; }
+.glidy-launch-detail-head > div > p:last-child { margin: 0; color: #77717f; font-size: 9px; }
+.glidy-detail-close { padding: 7px 10px; font: 10px Matter, monospace; }
+.glidy-tax-now { display: flex; align-items: center; gap: 14px; margin: 17px 0; padding: 13px; background: #f7f6fc; color: #6a58c8; }
+.glidy-tax-now article { display: grid; gap: 3px; }
+.glidy-tax-now article span { color: #77717f; font-size: 9px; }
+.glidy-tax-now strong { color: #261f35; font: 500 17px Azeret, monospace; }
+.glidy-launch-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.glidy-launch-facts > div { min-width: 0; }
+.glidy-launch-facts dt { margin-bottom: 4px; color: #898391; font-size: 9px; }
+.glidy-launch-facts dd { overflow: hidden; margin: 0; color: #322b3c; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.glidy-payouts { margin-top: 16px; }
+.glidy-payouts h4 { margin: 0 0 6px; color: #342d3d; font: 500 11px Matter, monospace; }
+.glidy-payouts > div { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid #efedf2; color: #77717f; font-size: 9px; }
+.glidy-payouts strong { color: #322b3c; font-weight: 500; }
+.glidy-event-list { margin-top: 19px; }
+.glidy-event-list h4 { display: flex; gap: 8px; margin: 0 0 8px; color: #342d3d; font: 500 11px Matter, monospace; }
+.glidy-event-list h4 span { color: #888290; font-weight: 400; }
+.glidy-event-list > p { color: #77717f; font-size: 10px; }
+.glidy-event-row { justify-content: flex-start; padding: 8px 0; border-top: 1px solid #efedf2; color: #77717f; font-size: 9px; }
+.glidy-event-row strong { flex: 1; color: #433c4d; font-weight: 500; }
+.glidy-event-row a { display: grid; place-items: center; color: #584bb6; }
+@media (max-width: 760px) {
+  .glidy-chain-section { padding: 15px; }
+  .glidy-chain-heading { align-items: flex-start; }
+  .glidy-chain-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .glidy-launch-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .glidy-chain-grid { grid-template-columns: 1fr; }
+  .glidy-chain-heading > div:first-child > p:last-child { max-width: 240px; line-height: 1.5; }
+  .glidy-chain-meta { max-width: 120px; align-items: flex-end; flex-direction: column-reverse; gap: 6px; text-align: right; }
+  .glidy-launch-detail { padding: 13px; }
+  .glidy-chain-meta > span { line-height: 1.4; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glidy-spin { animation: none; }
+}

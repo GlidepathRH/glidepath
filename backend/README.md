@@ -24,7 +24,7 @@ On the public repository, CI typechecks the backend and builds its Docker image 
 
 All listed routes except `/health/` require the bearer token described above. CORS preflight requests are accepted without credentials; the actual API request must include the bearer token.
 
-Failed or missing bearer credentials are limited to 10 attempts per client IP per 15-minute window. Further attempts receive `429` with a `Retry-After` header. Counters are stored atomically in PostgreSQL and shared across service instances. Expired IP buckets are pruned periodically; client IPs are retained for up to an hour after their rate-limit window starts. The limiter fails closed with `503` if PostgreSQL is unavailable.
+Failed or missing bearer credentials are limited to 10 attempts per client IP per 15-minute window. Authenticated API requests are limited to 120 per client IP per 15-minute window. Both limits return `429` with a `Retry-After` header when exceeded. Counters are stored atomically in PostgreSQL and shared across service instances. The GLIDY server proxy forwards Vercel’s validated client IP in `X-Glidy-Client-IP`; the backend honors it only after bearer authentication succeeds. Direct API calls use Render’s Cloudflare/client forwarding headers. Expired IP buckets are pruned periodically; client IPs are retained for up to an hour after their rate-limit window starts. The limiter fails closed with `503` if PostgreSQL is unavailable.
 
 The health response includes `commit`, the full Git commit SHA baked into the image at build time. Local runs show `unknown` unless `APP_COMMIT_SHA` is set.
 
@@ -37,4 +37,4 @@ bun install
 bun run dev
 ```
 
-The server applies SQL files in `db/migrations/` at startup. The launch tables are created by `001_launch_indexer.sql`.
+The server applies SQL files in `db/migrations/` at startup. The launch tables are created by `001_launch_indexer.sql`; migrations `002_api_auth_rate_limits.sql` and `003_api_client_rate_limits.sql` create the PostgreSQL-backed failed-auth and authenticated-request limits.

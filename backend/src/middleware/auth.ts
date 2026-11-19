@@ -5,6 +5,7 @@ import type { Pool } from "pg";
 
 const FAILURE_WINDOW_MS = 15 * 60 * 1000;
 const FAILURE_LIMIT = 10;
+const AUTHENTICATED_REQUEST_LIMIT = 120;
 const RATE_LIMIT_RETENTION_MS = 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
 let lastCleanupAt = 0;
@@ -24,6 +25,12 @@ function clientIp(request: Request): string {
 
   const socketIp = request.socket.remoteAddress;
   return socketIp && isIP(socketIp) ? socketIp : "0.0.0.0";
+}
+
+function authenticatedClientIp(request: Request): string {
+  const forwardedClientIp = request.get("x-glidy-client-ip")?.trim();
+  if (forwardedClientIp && isIP(forwardedClientIp)) return forwardedClientIp;
+  return clientIp(request);
 }
 
 async function recordFailedAttempt(db: Pool, ip: string): Promise<number> {
@@ -57,6 +64,36 @@ async function recordFailedAttempt(db: Pool, ip: string): Promise<number> {
   return Math.max(1, row.retry_after_seconds);
 }
 
+async function recordAuthenticatedRequest(db: Pool, ip: string): Promise<number> {
+  const result = await db.query<{ request_count: number; retry_after_seconds: number }>(
+    `INSERT INTO api_client_rate_limits (client_ip, window_started_at, request_count)
+     VALUES ($1::inet, now(), 1)
+     ON CONFLICT (client_ip) DO UPDATE SET
+       window_started_at = CASE
+         WHEN api_client_rate_limits.window_started_at <= now() - ($2 * interval '1 millisecond')
+           THEN now()
+         ELSE api_client_rate_limits.window_started_at
+       END,
+       request_count = CASE
+         WHEN api_client_rate_limits.window_started_at <= now() - ($2 * interval '1 millisecond')
+           THEN 1
+         ELSE api_client_rate_limits.request_count + 1
+       END,
+       updated_at = now()
+     RETURNING request_count,
+       GREATEST(
+         0,
+         CEIL(EXTRACT(EPOCH FROM (
+           window_started_at + ($2 * interval '1 millisecond') - now()
+         )))::integer
+       ) AS retry_after_seconds`,
+    [ip, FAILURE_WINDOW_MS],
+  );
+  const row = result.rows[0];
+  if (row.request_count <= AUTHENTICATED_REQUEST_LIMIT) return 0;
+  return Math.max(1, row.retry_after_seconds);
+}
+
 function cleanupExpiredBuckets(db: Pool, now: number): void {
   if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) return;
   lastCleanupAt = now;
@@ -66,6 +103,11 @@ function cleanupExpiredBuckets(db: Pool, now: number): void {
        WHERE window_started_at < now() - ($1 * interval '1 millisecond')`,
       [RATE_LIMIT_RETENTION_MS],
     )
+    .then(() => db.query(
+      `DELETE FROM api_client_rate_limits
+       WHERE window_started_at < now() - ($1 * interval '1 millisecond')`,
+      [RATE_LIMIT_RETENTION_MS],
+    ))
     .catch((error: unknown) => {
       const name = error instanceof Error ? error.name : "UnknownError";
       console.error(`API auth rate-limit cleanup failed (${name})`);
@@ -91,6 +133,20 @@ export function createMasterApiAuth(
     );
 
     if (authenticated) {
+      cleanupExpiredBuckets(db, Date.now());
+      try {
+        const retryAfter = await recordAuthenticatedRequest(db, authenticatedClientIp(request));
+        if (retryAfter > 0) {
+          response.setHeader("Retry-After", String(retryAfter));
+          response.status(429).json({ error: "API request limit exceeded for this IP" });
+          return;
+        }
+      } catch (error) {
+        const name = error instanceof Error ? error.name : "UnknownError";
+        console.error(`API request rate-limit check failed (${name})`);
+        response.status(503).json({ error: "API request limit is temporarily unavailable" });
+        return;
+      }
       next();
       return;
     }
