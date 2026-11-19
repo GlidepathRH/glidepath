@@ -7,7 +7,7 @@ export type IndexerSnapshot = {
   lastError: string | null;
 };
 
-class IndexerStatus {
+export class IndexerStatus {
   #value: IndexerSnapshot = {
     status: "starting",
     chainId: 4663,

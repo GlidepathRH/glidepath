@@ -1,8 +1,23 @@
-# GLIDY
+<div align="center">
 
-GLIDY is a token launch platform on Robinhood Chain. Creators configure a buy and sell tax path before launch. The Uniswap v4 pool hook applies those rules, and the committed rates can step down over time or be lowered by the creator. The token remains a standard fixed-supply ERC-20; GLIDY's pool rules apply to swaps through that pool.
+<h1>GLIDY</h1>
 
-GLIDY is built around making launch funding and pool fees understandable up front: show the configured tax path, report current onchain rates, and make launch activity inspectable.
+<p><strong>Launch with a tax. Lock how it falls.</strong></p>
+
+<p>GLIDY is a token launch platform on Robinhood Chain. Creators configure a buy and sell tax path before launch. The Uniswap v4 pool hook applies those rules, and the committed rates can step down over time or be lowered by the creator. The token remains a standard fixed-supply ERC-20; GLIDY's pool rules apply to swaps through that pool.</p>
+
+<p>GLIDY makes launch funding and pool fees understandable up front: it shows the configured tax path, reports current onchain rates, and makes launch activity inspectable.</p>
+
+<p>
+  <a href="https://github.com/GlidepathRH/glidepath/actions/workflows/backend.yml"><img alt="Backend CI" src="https://github.com/GlidepathRH/glidepath/actions/workflows/backend.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white">
+  <img alt="Bun" src="https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white">
+  <img alt="TanStack Start" src="https://img.shields.io/badge/TanStack_Start-1.x-FF4154?logo=tanstack&logoColor=white">
+  <img alt="Robinhood Chain 4663" src="https://img.shields.io/badge/Robinhood_Chain-4663-00C805">
+</p>
+
+</div>
 
 ## Links
 
