@@ -31,7 +31,7 @@ function StatusMessage({ kind, error, retry }) {
   return null;
 }
 
-function LaunchDetail({ tokenAddress }) {
+function LaunchDetail({ tokenAddress, copied, onCopy }) {
   const [state, setState] = useState({ kind: "loading" });
   const [retryKey, setRetryKey] = useState(0);
   const [indexAttempt, setIndexAttempt] = useState(0);
@@ -71,8 +71,12 @@ function LaunchDetail({ tokenAddress }) {
     <section className="glidy-launch-detail" aria-labelledby="launch-detail-title">
       <div className="glidy-launch-detail-head">
         <div>
-          <p className="glidy-api-kicker">GLIDY LAUNCH · ROBINHOOD CHAIN</p>
-          <h2 id="launch-detail-title">{launch.token_name} <span>${launch.token_symbol}</span></h2>
+          <div className="glidy-detail-title-row">
+            <h2 id="launch-detail-title">{launch.token_name} <span>${launch.token_symbol}</span></h2>
+            <button type="button" className="glidy-detail-action glidy-copy-token" onClick={onCopy} aria-label="Copy token address">
+              {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy address"}
+            </button>
+          </div>
           <p>Created {dateLabel(launch.launch_block_timestamp)} · {shortAddress(launch.token_address)}</p>
         </div>
       </div>
@@ -136,18 +140,23 @@ export function GlidyLaunchDetailPage({ tokenAddress }) {
       toast("Could not copy token address", "error");
     }
   }
+  function toggleSaved() {
+    setSaved((current) => current.map((item) => String(item).toLowerCase()).includes(id)
+      ? current.filter((item) => String(item).toLowerCase() !== id)
+      : [...current, id]);
+    toast(isSaved ? "Launch removed from saved" : "Launch saved");
+  }
   return (
     <>
       <div className="glidy-detail-tools">
         <Link to="/explore">← Back to launches</Link>
         {/^0x[\da-f]{40}$/i.test(id) && <>
-          <button type="button" onClick={copyTokenAddress} aria-label="Copy token address">{copied ? <Check size={15} /> : <Copy size={15} />} {copied ? "Copied" : "Copy address"}</button>
-          <button type="button" onClick={() => setSaved((current) => current.map((item) => String(item).toLowerCase()).includes(id) ? current.filter((item) => String(item).toLowerCase() !== id) : [...current, id])}>
-            <Star size={15} fill={isSaved ? "currentColor" : "none"} /> {isSaved ? "Remove saved" : "Save launch"}
+          <button type="button" className="glidy-detail-action" onClick={toggleSaved} aria-pressed={isSaved} aria-label={isSaved ? "Remove from saved launches" : "Save launch"}>
+            <Star size={14} fill={isSaved ? "currentColor" : "none"} /> {isSaved ? "Saved" : "Save"}
           </button>
         </>}
       </div>
-      {/^0x[\da-f]{40}$/i.test(id) ? <LaunchDetail tokenAddress={tokenAddress} key={id} /> : <div className="glidy-chain-empty"><span className="glidy-empty-mark">G</span><div><strong>Enter a token address</strong><p>Open a launch from the indexed launches list to view its details.</p></div></div>}
+      {/^0x[\da-f]{40}$/i.test(id) ? <LaunchDetail tokenAddress={tokenAddress} copied={copied} onCopy={copyTokenAddress} key={id} /> : <div className="glidy-chain-empty"><span className="glidy-empty-mark">G</span><div><strong>Enter a token address</strong><p>Open a launch from the indexed launches list to view its details.</p></div></div>}
     </>
   );
 }

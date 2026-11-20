@@ -107,7 +107,6 @@ export function createLaunchRouter(db: Pool, publicClient: PublicClient) {
         [config.RHC_CHAIN_ID, launch.pool_id],
       );
       const points = [
-        { timestamp: Number(launch.launch_block_timestamp), sqrt: launch.sqrt_price_x96, volume: 0 },
         ...swaps.rows.map((swap) => ({
           timestamp: Number(swap.block_timestamp), sqrt: swap.sqrt_price_x96,
           volume: Math.abs(Number(swap.amount0)) / 1e18,

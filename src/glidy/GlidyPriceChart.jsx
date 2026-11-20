@@ -8,19 +8,41 @@ export function GlidyPriceChart({ tokenAddress }) {
   const container = useRef(null);
   const [interval, setInterval] = useState("5m");
   const [state, setState] = useState({ kind: "loading", candles: [] });
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
-    setState((current) => ({ ...current, kind: current.candles.length ? "refreshing" : "loading" }));
-    const load = () => apiGet(`api/v1/launches/${tokenAddress}/chart?interval=${interval}`, controller.signal)
-      .then((result) => setState({ kind: "ready", candles: result.data ?? [] }))
-      .catch((error) => {
-        if (!controller.signal.aborted) setState((current) => ({ ...current, kind: "error", error: error.message }));
-      });
-    void load();
-    const timer = setInterval(load, 15_000);
-    return () => { controller.abort(); clearInterval(timer); };
-  }, [tokenAddress, interval]);
+    let disposed = false;
+    let timer;
+    setState({ kind: "loading", candles: [] });
+    async function load() {
+      const timeout = setTimeout(() => controller.abort(), 9000);
+      try {
+        const result = await apiGet(`api/v1/launches/${tokenAddress}/chart?interval=${interval}`, controller.signal);
+        if (disposed) return false;
+        const candles = result.data ?? [];
+        setState({ kind: candles.length ? "ready" : "empty", candles });
+        if (!candles.length && timer) {
+          clearInterval(timer);
+          timer = undefined;
+        }
+        return candles.length > 0;
+      } catch (error) {
+        if (timer) {
+          clearInterval(timer);
+          timer = undefined;
+        }
+        if (!disposed) setState({ kind: "error", candles: [], error: controller.signal.aborted ? "Chart request timed out." : error.message });
+        return false;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+    void (async () => {
+      if (await load() && !disposed) timer = setInterval(() => { void load(); }, 15_000);
+    })();
+    return () => { disposed = true; controller.abort(); clearInterval(timer); };
+  }, [tokenAddress, interval, retryKey]);
 
   useEffect(() => {
     if (!container.current || !state.candles.length) return;
@@ -52,6 +74,7 @@ export function GlidyPriceChart({ tokenAddress }) {
     <div ref={container} className="glidy-chart-canvas" />
     {state.kind === "loading" && <p className="glidy-chart-message">Loading onchain price history…</p>}
     {state.kind === "error" && <p className="glidy-chart-message is-error">{state.error || "Chart data is temporarily unavailable."}</p>}
-    {state.kind === "ready" && !state.candles.length && <p className="glidy-chart-message">No pool price data has been indexed yet.</p>}
+    {state.kind === "empty" && <p className="glidy-chart-message">No swaps yet. The price chart will appear after the first trade.</p>}
+    {state.kind === "error" && <button className="glidy-chart-retry" type="button" onClick={() => setRetryKey((key) => key + 1)}>Retry</button>}
   </section>;
 }
