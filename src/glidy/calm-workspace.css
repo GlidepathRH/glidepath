@@ -171,18 +171,6 @@
   align-items: center;
   gap: 6px;
 }
-.workspace .calm-sidebar-bottom > span:last-child {
-  width: 100%;
-  margin-top: 3px;
-  padding-left: 11px;
-  font-size: 10px;
-}
-.workspace .calm-preview-dot {
-  width: 5px;
-  height: 5px;
-  background: #b7bd73;
-  border-radius: 50%;
-}
 /* Movable dock; the gradient continues through each separate bubble. */
 .workspace .compact-dock {
   position: fixed;

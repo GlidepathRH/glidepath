@@ -4,7 +4,7 @@ import { isAllowedGlidyReadPath } from "./proxy-policy.mjs";
 
 test("proxy allows only the documented read endpoints", () => {
   const address = `0x${"aB".repeat(20)}`;
-  for (const path of ["ready", "api/v1/indexer", "api/v1/launches", `api/v1/launches/${address}`, `api/v1/launches/${address}/events`]) {
+  for (const path of ["ready", "api/v1/indexer", "api/v1/launches", `api/v1/launches/${address}`, `api/v1/launches/${address}/events`, `api/v1/launches/${address}/chart`]) {
     assert.equal(isAllowedGlidyReadPath(path), true, path);
   }
 });

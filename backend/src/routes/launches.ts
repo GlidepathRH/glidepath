@@ -67,6 +67,74 @@ export function createLaunchRouter(db: Pool, publicClient: PublicClient) {
     }
   });
 
+  router.get("/:tokenAddress/chart", async (request, response) => {
+    const tokenAddress = request.params.tokenAddress;
+    const interval = String(request.query.interval ?? "5m");
+    const bucketSeconds: Record<string, number> = { "5m": 300, "1h": 3600, "4h": 14400, "1d": 86400 };
+    if (!isAddress(tokenAddress)) {
+      response.status(400).json({ error: "tokenAddress must be an EVM address" });
+      return;
+    }
+    if (!(interval in bucketSeconds)) {
+      response.status(400).json({ error: "interval must be one of 5m, 1h, 4h, 1d" });
+      return;
+    }
+    try {
+      const launchResult = await db.query<{
+        pool_id: string; quote_currency: string; sqrt_price_x96: string; launch_block_timestamp: string;
+      }>(
+        `SELECT pool_id, quote_currency, sqrt_price_x96, launch_block_timestamp FROM launches
+         WHERE chain_id = $1 AND token_address = $2`,
+        [config.RHC_CHAIN_ID, getAddress(tokenAddress).toLowerCase()],
+      );
+      if (!launchResult.rowCount) {
+        response.status(404).json({ error: "launch not found" });
+        return;
+      }
+      const launch = launchResult.rows[0];
+      if (!/^0x0{40}$/i.test(launch.quote_currency)) {
+        response.status(422).json({ error: "chart currently supports native ETH quote pools" });
+        return;
+      }
+      const swaps = await db.query<{
+        block_timestamp: string; block_number: string; log_index: number; sqrt_price_x96: string; amount0: string;
+      }>(
+        `SELECT block_timestamp, sqrt_price_x96, amount0 FROM (
+           SELECT block_timestamp, block_number, log_index, sqrt_price_x96, amount0 FROM pool_swaps
+           WHERE chain_id = $1 AND pool_id = $2
+           ORDER BY block_timestamp DESC, block_number DESC, log_index DESC LIMIT 20000
+         ) recent_swaps ORDER BY block_timestamp, block_number, log_index`,
+        [config.RHC_CHAIN_ID, launch.pool_id],
+      );
+      const points = [
+        { timestamp: Number(launch.launch_block_timestamp), sqrt: launch.sqrt_price_x96, volume: 0 },
+        ...swaps.rows.map((swap) => ({
+          timestamp: Number(swap.block_timestamp), sqrt: swap.sqrt_price_x96,
+          volume: Math.abs(Number(swap.amount0)) / 1e18,
+        })),
+      ].filter((point) => Number.isFinite(point.timestamp) && point.timestamp > 0);
+      const intervalSeconds = bucketSeconds[interval];
+      const candles = new Map<number, { time: number; open: number; high: number; low: number; close: number; volume: number }>();
+      for (const point of points) {
+        const sqrt = Number(point.sqrt) / 2 ** 96;
+        const price = 1 / (sqrt * sqrt);
+        if (!Number.isFinite(price) || price <= 0) continue;
+        const time = Math.floor(point.timestamp / intervalSeconds) * intervalSeconds;
+        const candle = candles.get(time);
+        if (!candle) candles.set(time, { time, open: price, high: price, low: price, close: price, volume: point.volume });
+        else {
+          candle.high = Math.max(candle.high, price);
+          candle.low = Math.min(candle.low, price);
+          candle.close = price;
+          candle.volume += point.volume;
+        }
+      }
+      response.json({ data: [...candles.values()], interval, indexed_swaps: swaps.rowCount ?? 0 });
+    } catch {
+      response.status(503).json({ error: "pool chart is temporarily unavailable" });
+    }
+  });
+
   router.get("/:tokenAddress", async (request, response) => {
     const tokenAddress = request.params.tokenAddress;
     if (!isAddress(tokenAddress)) {

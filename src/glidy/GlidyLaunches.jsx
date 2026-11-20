@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, LoaderCircle, RotateCw, Star } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Check, Copy, LoaderCircle, RotateCw, Star } from "lucide-react";
 import { Link, useSaved } from "./storage";
 import { apiGet, useGlidyApi } from "./GlidyApi";
 import { formatTaxPips as percentFromPips, shortAddress } from "./launch-data.mjs";
+import { GlidyPriceChart } from "./GlidyPriceChart";
+import { useGlidyToast } from "./GlidyToast";
 
 function dateLabel(seconds) {
   const value = Number(seconds);
@@ -33,7 +35,6 @@ function LaunchDetail({ tokenAddress }) {
   const [state, setState] = useState({ kind: "loading" });
   const [retryKey, setRetryKey] = useState(0);
   const [indexAttempt, setIndexAttempt] = useState(0);
-
   useEffect(() => {
     const controller = new AbortController();
     let retryTimer;
@@ -80,6 +81,7 @@ function LaunchDetail({ tokenAddress }) {
         <ArrowDownRight size={18} aria-hidden="true" />
         <article><span>Current sell tax</span><strong>{percentFromPips(launch.sell_tax_pips)}</strong></article>
       </div>
+      <GlidyPriceChart tokenAddress={tokenAddress} />
       <dl className="glidy-launch-facts">
         <div><dt>Token</dt><dd title={launch.token_address}>{shortAddress(launch.token_address)}</dd></div>
         <div><dt>Creator</dt><dd title={launch.creator_address}>{shortAddress(launch.creator_address)}</dd></div>
@@ -91,12 +93,16 @@ function LaunchDetail({ tokenAddress }) {
         <div><dt>Anti-snipe</dt><dd>{snipeName}{snipeName !== "Off" && snipe.durationSeconds ? ` · ${snipe.durationSeconds}s` : ""}{launch.snipe_ended ? " · ended early" : ""}</dd></div>
         <div><dt>Pool ID</dt><dd title={launch.pool_id}>{shortAddress(launch.pool_id)}</dd></div>
       </dl>
-      {Array.isArray(launch.payout_recipients) && launch.payout_recipients.length > 0 && (
+      {Array.isArray(launch.payout_recipients) && launch.payout_recipients.some((recipient, index) =>
+        Number(launch.payout_weights_bps?.[index] ?? 0) > 0 && !/^0x0{40}$/i.test(recipient)
+      ) && (
         <div className="glidy-payouts">
           <h3>Creator proceeds split</h3>
-          {launch.payout_recipients.map((recipient, index) => (
-            <div key={`${recipient}-${index}`}><span title={recipient}>{shortAddress(recipient)}</span><strong>{(Number(launch.payout_weights_bps?.[index] ?? 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%</strong></div>
-          ))}
+          {launch.payout_recipients.map((recipient, index) => ({ recipient, index, weight: Number(launch.payout_weights_bps?.[index] ?? 0) }))
+            .filter(({ recipient, weight }) => weight > 0 && !/^0x0{40}$/i.test(recipient))
+            .map(({ recipient, index, weight }) => (
+              <div key={`${recipient}-${index}`}><span title={recipient}>{shortAddress(recipient)}</span><strong>{(weight / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%</strong></div>
+            ))}
         </div>
       )}
       <div className="glidy-event-list">
@@ -115,15 +121,31 @@ function LaunchDetail({ tokenAddress }) {
 
 export function GlidyLaunchDetailPage({ tokenAddress }) {
   const [saved, setSaved] = useSaved("glidepath-real-watchlist", []);
+  const [copied, setCopied] = useState(false);
+  const toast = useGlidyToast();
   const id = String(tokenAddress || "").toLowerCase();
   const isSaved = saved.map((item) => String(item).toLowerCase()).includes(id);
+  async function copyTokenAddress() {
+    try {
+      await navigator.clipboard.writeText(tokenAddress);
+      setCopied(true);
+      toast("Token address copied");
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+      toast("Could not copy token address", "error");
+    }
+  }
   return (
     <>
       <div className="glidy-detail-tools">
         <Link to="/explore">← Back to launches</Link>
-        {/^0x[\da-f]{40}$/i.test(id) && <button type="button" onClick={() => setSaved((current) => current.map((item) => String(item).toLowerCase()).includes(id) ? current.filter((item) => String(item).toLowerCase() !== id) : [...current, id])}>
-          <Star size={15} fill={isSaved ? "currentColor" : "none"} /> {isSaved ? "Remove saved" : "Save launch"}
-        </button>}
+        {/^0x[\da-f]{40}$/i.test(id) && <>
+          <button type="button" onClick={copyTokenAddress} aria-label="Copy token address">{copied ? <Check size={15} /> : <Copy size={15} />} {copied ? "Copied" : "Copy address"}</button>
+          <button type="button" onClick={() => setSaved((current) => current.map((item) => String(item).toLowerCase()).includes(id) ? current.filter((item) => String(item).toLowerCase() !== id) : [...current, id])}>
+            <Star size={15} fill={isSaved ? "currentColor" : "none"} /> {isSaved ? "Remove saved" : "Save launch"}
+          </button>
+        </>}
       </div>
       {/^0x[\da-f]{40}$/i.test(id) ? <LaunchDetail tokenAddress={tokenAddress} key={id} /> : <div className="glidy-chain-empty"><span className="glidy-empty-mark">G</span><div><strong>Enter a token address</strong><p>Open a launch from the indexed launches list to view its details.</p></div></div>}
     </>

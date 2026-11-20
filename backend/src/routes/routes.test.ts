@@ -107,6 +107,17 @@ describe("readiness and launch routes", () => {
     });
   });
 
+  test("chart endpoint validates intervals and reports an unindexed launch", async () => {
+    const db = mockDb();
+    await withRoutes(db, { getChainId: async () => 4663 }, async (base) => {
+      const invalidInterval = await fetch(`${base}/api/v1/launches/${TOKEN}/chart?interval=15m`);
+      expect(invalidInterval.status).toBe(400);
+      const missing = await fetch(`${base}/api/v1/launches/${TOKEN}/chart?interval=1h`);
+      expect(missing.status).toBe(404);
+      expect(db.calls).toHaveLength(1);
+    });
+  });
+
   test("detail reads current taxes from the hook instead of stored launch values", async () => {
     const db = mockDb({ rows: [{ token_address: TOKEN, pool_id: POOL, buy_tax_pips: 99 }] });
     const readCalls: unknown[] = [];

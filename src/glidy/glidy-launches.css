@@ -103,3 +103,26 @@
 @media (prefers-reduced-motion: reduce) {
   .glidy-spin { animation: none; }
 }
+.glidy-price-chart {
+  position: relative;
+  margin: 22px 0;
+  padding: 16px;
+  border: 1px solid #ebe5ee;
+  border-radius: 12px;
+  background: #fbf9fc;
+}
+.glidy-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.glidy-chart-head > div:first-child { display: grid; gap: 4px; }
+.glidy-chart-head span { color: #51435c; font: 10px MatterMono, monospace; letter-spacing: .08em; }
+.glidy-chart-head small { color: #887e8f; font: 10px Matter, sans-serif; }
+.glidy-chart-intervals { display: flex; gap: 4px; }
+.glidy-chart-intervals button { border: 0; border-radius: 5px; padding: 6px 8px; background: transparent; color: #756a7c; font: 10px MatterMono, monospace; cursor: pointer; }
+.glidy-chart-intervals button.active { background: #eee8f2; color: #382642; }
+.glidy-chart-canvas { min-height: 280px; }
+.glidy-chart-message { position: absolute; left: 0; right: 0; top: 55%; margin: 0; color: #817787; font: 11px Matter, sans-serif; text-align: center; pointer-events: none; }
+.glidy-chart-message.is-error { color: #9c3948; }
+@media (max-width: 520px) {
+  .glidy-price-chart { padding: 12px 8px; }
+  .glidy-chart-head { align-items: flex-start; flex-direction: column; }
+  .glidy-chart-canvas { min-height: 240px; }
+}

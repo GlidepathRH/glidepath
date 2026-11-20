@@ -6,7 +6,7 @@ import {
   type Log,
   type PublicClient,
 } from "viem";
-import { indexedEvents, hookReadAbi, tokenReadAbi } from "../chain/abi";
+import { indexedEvents, hookReadAbi, tokenReadAbi, poolManagerSwapAbi } from "../chain/abi";
 import { config } from "../config";
 import { rpcRangeLimit, safeRpcFailure } from "./rpc-errors";
 import { indexerStatus } from "./status";
@@ -14,6 +14,7 @@ import { indexerStatus } from "./status";
 const INDEXER_NAME = "glidepath-launches-v1";
 const HOOK_ADDRESS = config.GLIDEPATH_HOOK_ADDRESS;
 const FACTORY_ADDRESS = config.GLIDEPATH_FACTORY_ADDRESS;
+const POOL_MANAGER_ADDRESS = config.GLIDEPATH_POOL_MANAGER_ADDRESS;
 
 type TaxPath = {
   startPips: bigint | number;
@@ -260,6 +261,71 @@ export class GlidepathIndexer {
     indexerStatus.configure(config.RHC_CHAIN_ID);
   }
 
+  private async indexPoolSwaps(client: PoolClient, finalizedHead: bigint): Promise<number> {
+    const pools = await client.query<{ pool_id: string; launch_block_number: string }>(
+      `SELECT pool_id, launch_block_number FROM launches WHERE chain_id = $1`,
+      [config.RHC_CHAIN_ID],
+    );
+    let indexed = 0;
+    for (const pool of pools.rows) {
+      await client.query(
+        `INSERT INTO pool_swap_indexer_state (chain_id, pool_id, next_block)
+         VALUES ($1, $2, $3) ON CONFLICT (chain_id, pool_id) DO NOTHING`,
+        [config.RHC_CHAIN_ID, pool.pool_id, pool.launch_block_number],
+      );
+      const cursorResult = await client.query<{ next_block: string }>(
+        `SELECT next_block FROM pool_swap_indexer_state WHERE chain_id = $1 AND pool_id = $2`,
+        [config.RHC_CHAIN_ID, pool.pool_id],
+      );
+      const from = BigInt(cursorResult.rows[0].next_block);
+      if (from > finalizedHead) continue;
+      const end = from + BigInt(this.#rpcLogRange) - 1n < finalizedHead
+        ? from + BigInt(this.#rpcLogRange) - 1n
+        : finalizedHead;
+      const logs = await this.publicClient.getLogs({
+        address: POOL_MANAGER_ADDRESS,
+        event: poolManagerSwapAbi[0],
+        args: { id: pool.pool_id as `0x${string}` },
+        fromBlock: from,
+        toBlock: end,
+      });
+      const timestampByBlock = new Map<string, bigint>();
+      const blocks = [...new Set(logs.flatMap((log) => log.blockNumber === null ? [] : [log.blockNumber]))];
+      await Promise.all(blocks.map(async (blockNumber) => {
+        const block = await this.publicClient.getBlock({ blockNumber });
+        timestampByBlock.set(blockNumber.toString(), block.timestamp);
+      }));
+      await client.query("BEGIN");
+      try {
+        for (const log of logs) {
+          if (log.blockNumber === null || log.transactionHash === null || log.logIndex === null) continue;
+          const decoded = decodeEventLog({ abi: poolManagerSwapAbi, data: log.data, topics: log.topics });
+          await client.query(
+            `INSERT INTO pool_swaps (
+               chain_id, pool_id, transaction_hash, log_index, block_number,
+               block_timestamp, amount0, amount1, sqrt_price_x96
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+             ON CONFLICT (chain_id, transaction_hash, log_index) DO NOTHING`,
+            [config.RHC_CHAIN_ID, pool.pool_id, log.transactionHash, log.logIndex,
+              log.blockNumber.toString(), timestampByBlock.get(log.blockNumber.toString())?.toString() ?? "0",
+              decoded.args.amount0.toString(), decoded.args.amount1.toString(), decoded.args.sqrtPriceX96.toString()],
+          );
+        }
+        await client.query(
+          `UPDATE pool_swap_indexer_state SET next_block = $3, updated_at = now()
+           WHERE chain_id = $1 AND pool_id = $2`,
+          [config.RHC_CHAIN_ID, pool.pool_id, (end + 1n).toString()],
+        );
+        await client.query("COMMIT");
+        indexed += logs.length;
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      }
+    }
+    return indexed;
+  }
+
   async pollOnce(): Promise<void> {
     let client: PoolClient | undefined;
     let lockAcquired = false;
@@ -290,6 +356,8 @@ export class GlidepathIndexer {
       const head = await this.publicClient.getBlockNumber();
       const confirmations = BigInt(config.INDEXER_CONFIRMATIONS);
       const finalizedHead = head > confirmations ? head - confirmations : 0n;
+      stage = "rpc.pool_swaps";
+      const swapCount = await this.indexPoolSwaps(client, finalizedHead);
       if (fromBlock > finalizedHead) {
         indexerStatus.complete(fromBlock, null);
         return;
@@ -434,6 +502,7 @@ export class GlidepathIndexer {
         logCount: logs.length,
         eventCount: events.length,
         newLaunches: launches.length,
+        swapCount,
         rpcLogRange: this.#rpcLogRange,
       }));
     } catch (error) {

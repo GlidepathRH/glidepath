@@ -6,7 +6,7 @@ The backend serves a read-only view of Glidepath launches on Robinhood Chain. It
 
 Copy `.env.example` to `.env`. Set `DATABASE_URL`, `RHC_RPC_URL`, `MASTER_API_KEY`, and `FRONTEND_URL`. Set `MASTER_API_KEY` to a random secret with at least 32 characters; configure the same value in the hosting provider's environment. All routes except `/health/` require `Authorization: Bearer <MASTER_API_KEY>`. If the key is missing, protected routes fail closed with `503`; the health route remains public. The current chain ID, factory, hook and deployment block are prefilled for the Hydrogen deployment. EVM addresses are validated as 20-byte hex and normalized to checksum casing at startup. The current read-only API does not access or use the treasury private key configured in the local environment.
 
-The indexer waits for `INDEXER_CONFIRMATIONS` blocks, scans up to `INDEXER_BLOCK_RANGE` blocks per poll, and resumes from its PostgreSQL cursor after restart. It splits each poll batch into provider-sized `eth_getLogs` requests and learns a smaller block-range cap when the RPC reports one. A PostgreSQL advisory lock prevents multiple backend instances from indexing the same range concurrently. Startup, migration, poll progress, RPC range limits and failures are logged as structured JSON; logs omit RPC URLs and credentials.
+The indexer waits for `INDEXER_CONFIRMATIONS` blocks, scans up to `INDEXER_BLOCK_RANGE` blocks per poll, and resumes from its PostgreSQL cursor after restart. It indexes factory and hook events, then tracks each launch pool's Uniswap v4 `Swap` events from the configured pool manager into PostgreSQL. The per-pool cursors backfill existing launches as well as new ones. The chart endpoint aggregates those swaps into OHLCV candles; launch price comes from the onchain `LaunchCreated` event. A PostgreSQL advisory lock prevents multiple backend instances from indexing the same range concurrently. Startup, migration, poll progress, RPC range limits and failures are logged as structured JSON; logs omit RPC URLs and credentials.
 
 ## CI and publishing
 
@@ -21,6 +21,7 @@ On the public repository, CI typechecks the backend and builds its Docker image 
 - `GET /api/v1/launches?limit=50` — latest indexed launches, up to 100.
 - `GET /api/v1/launches/:tokenAddress` — launch details plus current buy/sell tax in Uniswap pips.
 - `GET /api/v1/launches/:tokenAddress/events` — indexed launch and pool events.
+- `GET /api/v1/launches/:tokenAddress/chart?interval=5m` — pool price candles and ETH volume from indexed swaps (intervals: `5m`, `1h`, `4h`, `1d`).
 
 All listed routes except `/health/` require the bearer token described above. CORS preflight requests are accepted without credentials; the actual API request must include the bearer token.
 
@@ -41,4 +42,4 @@ bun run test
 bun run check
 ```
 
-The server applies SQL files in `db/migrations/` at startup. The launch tables are created by `001_launch_indexer.sql`; migrations `002_api_auth_rate_limits.sql` and `003_api_client_rate_limits.sql` create the PostgreSQL-backed failed-auth and authenticated-request limits.
+The server applies SQL files in `db/migrations/` at startup. The launch tables are created by `001_launch_indexer.sql`; migrations `002_api_auth_rate_limits.sql` and `003_api_client_rate_limits.sql` create the PostgreSQL-backed failed-auth and authenticated-request limits; `004_pool_swaps.sql` adds per-pool swap indexing and chart storage.

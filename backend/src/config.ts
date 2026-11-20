@@ -23,6 +23,11 @@ const configSchema = z.object({
   GLIDEPATH_HOOK_ADDRESS: nonEmpty
     .refine((value) => isAddress(value, { strict: false }), "must be a 20-byte EVM address")
     .transform((value) => getAddress(value.toLowerCase())),
+  GLIDEPATH_POOL_MANAGER_ADDRESS: z.preprocess(
+    (value) => value === undefined || value === "" ? "0x8366a39cc670b4001a1121b8f6a443a643e40951" : value,
+    z.string().refine((value) => isAddress(value, { strict: false }), "must be a 20-byte EVM address")
+      .transform((value) => getAddress(value.toLowerCase())),
+  ),
   RHC_DEPLOYMENT_BLOCK: z.preprocess(
     (value) => (value === undefined || value === "" ? "0" : value),
     z.coerce.bigint().nonnegative(),
@@ -42,4 +47,5 @@ export const config = {
   ...parsed.data,
   GLIDEPATH_FACTORY_ADDRESS: parsed.data.GLIDEPATH_FACTORY_ADDRESS as `0x${string}`,
   GLIDEPATH_HOOK_ADDRESS: parsed.data.GLIDEPATH_HOOK_ADDRESS as `0x${string}`,
+  GLIDEPATH_POOL_MANAGER_ADDRESS: parsed.data.GLIDEPATH_POOL_MANAGER_ADDRESS as `0x${string}`,
 };

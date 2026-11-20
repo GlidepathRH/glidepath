@@ -24,6 +24,9 @@ export const Route = createFileRoute("/api/glidy/$")({
         if (path === "api/v1/launches" && incomingUrl.searchParams.has("limit")) {
           targetUrl.searchParams.set("limit", incomingUrl.searchParams.get("limit") ?? "");
         }
+        if (/^api\/v1\/launches\/0x[\da-f]{40}\/chart$/i.test(path) && incomingUrl.searchParams.has("interval")) {
+          targetUrl.searchParams.set("interval", incomingUrl.searchParams.get("interval") ?? "");
+        }
 
         const forwardedFor = request.headers.get("x-vercel-forwarded-for")
           ?? request.headers.get("x-forwarded-for");

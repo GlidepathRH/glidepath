@@ -1,0 +1,38 @@
+.glidy-toast-stack {
+  position: fixed;
+  z-index: 10000;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  display: flex;
+  width: min(440px, calc(100vw - 28px));
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.glidy-toast {
+  width: fit-content;
+  max-width: 100%;
+  padding: 10px 15px;
+  border: 1px solid #d9c8e7;
+  border-radius: 8px;
+  background: #30213b;
+  box-shadow: 0 10px 35px #160d1c36;
+  color: #fff;
+  font: 11px/1.5 MatterMono, monospace;
+  text-align: center;
+  overflow-wrap: anywhere;
+  animation: glidyToastIn 180ms ease-out both;
+}
+.glidy-toast.error {
+  border-color: #e7a7aa;
+  background: #612d38;
+}
+@keyframes glidyToastIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glidy-toast { animation: none; }
+}

@@ -225,6 +225,68 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /api/v1/launches/{tokenAddress}/chart:
+    parameters:
+      - $ref: '#/components/parameters/TokenAddress'
+    get:
+      tags: [Launches]
+      operationId: getLaunchChart
+      summary: Get OHLCV candles indexed from pool-manager swaps
+      parameters:
+        - name: interval
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [5m, 1h, 4h, 1d]
+            default: 5m
+      responses:
+        '200':
+          description: Candles for the launch pool, including the initial onchain launch price.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, interval, indexed_swaps]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [time, open, high, low, close, volume]
+                      properties:
+                        time: { type: integer, description: Unix timestamp in seconds, bucketed by interval. }
+                        open: { type: number, description: ETH per token. }
+                        high: { type: number }
+                        low: { type: number }
+                        close: { type: number }
+                        volume: { type: number, description: ETH volume. }
+                  interval: { type: string, enum: [5m, 1h, 4h, 1d] }
+                  indexed_swaps: { type: integer }
+        '400':
+          description: Invalid token address or interval.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: Launch not found in the index.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Chart currently supports native ETH quote pools.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: Chart data is unavailable.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
 components:
   securitySchemes:
     MasterApiKey:
