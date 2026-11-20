@@ -18,7 +18,9 @@ export function GlidyPriceChart({ tokenAddress }) {
     async function load() {
       const timeout = setTimeout(() => controller.abort(), 9000);
       try {
-        const result = await apiGet(`api/v1/launches/${tokenAddress}/chart?interval=${interval}`, controller.signal);
+        const selectedInterval = intervals.includes(interval) ? interval : intervals[0];
+        const query = new URLSearchParams({ interval: selectedInterval });
+        const result = await apiGet(`api/v1/launches/${tokenAddress}/chart?${query.toString()}`, controller.signal);
         if (disposed) return false;
         const candles = result.data ?? [];
         setState({ kind: candles.length ? "ready" : "empty", candles });

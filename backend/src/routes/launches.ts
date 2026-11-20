@@ -89,13 +89,19 @@ export function createLaunchRouter(db: Pool, publicClient: PublicClient) {
 
   router.get("/:tokenAddress/chart", async (request, response) => {
     const tokenAddress = request.params.tokenAddress;
-    const interval = String(request.query.interval ?? "5m");
     const bucketSeconds: Record<string, number> = { "5m": 300, "1h": 3600, "4h": 14400, "1d": 86400 };
+    const requestedIntervals = Array.isArray(request.query.interval)
+      ? request.query.interval
+      : [request.query.interval ?? "5m"];
+    const interval = requestedIntervals
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim().toLowerCase())
+      .find((value) => Object.hasOwn(bucketSeconds, value));
     if (!isAddress(tokenAddress)) {
       response.status(400).json({ error: "tokenAddress must be an EVM address" });
       return;
     }
-    if (!(interval in bucketSeconds)) {
+    if (!interval) {
       response.status(400).json({ error: "interval must be one of 5m, 1h, 4h, 1d" });
       return;
     }

@@ -115,9 +115,13 @@ describe("readiness and launch routes", () => {
     await withRoutes(db, { getChainId: async () => 4663 }, async (base) => {
       const invalidInterval = await fetch(`${base}/api/v1/launches/${TOKEN}/chart?interval=15m`);
       expect(invalidInterval.status).toBe(400);
-      const missing = await fetch(`${base}/api/v1/launches/${TOKEN}/chart?interval=1h`);
-      expect(missing.status).toBe(404);
-      expect(db.calls).toHaveLength(1);
+      for (const interval of ["5m", "1h", "4h", "1d"]) {
+        const missing = await fetch(`${base}/api/v1/launches/${TOKEN}/chart?interval=${interval}`);
+        expect(missing.status).toBe(404);
+      }
+      const normalized = await fetch(`${base}/api/v1/launches/${TOKEN}/chart?interval=1H`);
+      expect(normalized.status).toBe(404);
+      expect(db.calls).toHaveLength(5);
     });
   });
 
