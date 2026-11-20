@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Check, Copy, Plus } from "lucide-react";
-import { formatEther, isAddress, parseEventLogs, parseEther } from "viem";
+import { formatEther, getAddress, isAddress, parseEventLogs, parseEther } from "viem";
 import { useAccount, useBalance, usePublicClient, useReadContract, useWalletClient } from "wagmi";
 import factoryAbi from "./chain/factoryAbi.json";
 import { robinhoodChain } from "./GlidyWallet";
