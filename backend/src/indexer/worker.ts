@@ -279,8 +279,12 @@ export class GlidepathIndexer {
       );
       const from = BigInt(cursorResult.rows[0].next_block);
       if (from > finalizedHead) continue;
-      const end = from + BigInt(this.#rpcLogRange) - 1n < finalizedHead
-        ? from + BigInt(this.#rpcLogRange) - 1n
+      // Keep pool cursors moving at the configured batch rate even after the
+      // provider cap has lowered #rpcLogRange. The inner loop splits this batch
+      // into provider-sized requests.
+      const configuredEnd = from + BigInt(config.INDEXER_BLOCK_RANGE) - 1n;
+      const end = configuredEnd < finalizedHead
+        ? configuredEnd
         : finalizedHead;
       const logs: Log[] = [];
       let logCursor = from;

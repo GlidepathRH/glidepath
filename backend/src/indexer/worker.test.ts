@@ -25,11 +25,26 @@ function mockLogger() {
 
 afterEach(() => { log?.(); });
 
-function mockDatabase(initialCursor = 1000n) {
+function mockDatabase(initialCursor = 1000n, poolRows: Array<{ pool_id: string; launch_block_number: string }> = []) {
   let cursor = initialCursor;
+  const poolCursors = new Map<string, bigint>();
   const updates: string[] = [];
   const query = async (sql: string, values?: unknown[]) => {
     if (sql.includes("pg_try_advisory_lock")) return { rows: [{ locked: true }], rowCount: 1 };
+    if (sql.includes("SELECT pool_id, launch_block_number FROM launches")) return { rows: poolRows, rowCount: poolRows.length };
+    if (sql.includes("INSERT INTO pool_swap_indexer_state")) {
+      const poolId = String(values?.[1]);
+      if (!poolCursors.has(poolId)) poolCursors.set(poolId, BigInt(String(values?.[2])));
+      return { rows: [], rowCount: 1 };
+    }
+    if (sql.includes("SELECT next_block FROM pool_swap_indexer_state")) {
+      const nextBlock = poolCursors.get(String(values?.[1]));
+      return { rows: nextBlock === undefined ? [] : [{ next_block: nextBlock.toString() }], rowCount: nextBlock === undefined ? 0 : 1 };
+    }
+    if (sql.includes("UPDATE pool_swap_indexer_state SET next_block")) {
+      poolCursors.set(String(values?.[1]), BigInt(String(values?.[2])));
+      return { rows: [], rowCount: 1 };
+    }
     if (sql.includes("SELECT next_block FROM chain_indexer_state")) return { rows: [{ next_block: cursor.toString() }], rowCount: 1 };
     if (sql.includes("UPDATE chain_indexer_state SET next_block")) {
       cursor = BigInt(String(values?.[2]));
@@ -42,6 +57,7 @@ function mockDatabase(initialCursor = 1000n) {
   return {
     pool: { connect: async () => client } as unknown as Pool,
     cursor: () => cursor,
+    poolCursor: (poolId: string) => poolCursors.get(poolId),
     updates,
   };
 }
@@ -101,5 +117,28 @@ describe("GlidepathIndexer polling", () => {
     expect(database.cursor()).toBe(1000n);
     expect(database.updates).toHaveLength(0);
     expect(indexerStatus.snapshot()).toMatchObject({ status: "error", nextBlock: "1000", lastError: "Error" });
+  });
+
+  test("keeps pool-swap cursors advancing by the configured batch after learning an RPC cap", async () => {
+    log = mockLogger();
+    const poolId = `0x${"11".repeat(32)}`;
+    const database = mockDatabase(1000n, [{ pool_id: poolId, launch_block_number: "1000" }]);
+    let rejectsOversizedRange = true;
+    const chain = mockChain(({ fromBlock, toBlock }) => {
+      if (toBlock - fromBlock + 1n > 100n) {
+        if (rejectsOversizedRange) {
+          rejectsOversizedRange = false;
+          throw { name: "RpcRequestError", details: "ranges over 100 blocks are not supported on free plan" };
+        }
+        throw new Error("Indexer requested an oversized RPC range");
+      }
+      return [];
+    });
+    const indexer = new GlidepathIndexer(database.pool, chain.client);
+
+    await indexer.pollOnce();
+    expect(database.poolCursor(poolId)).toBe(2000n);
+    await indexer.pollOnce();
+    expect(database.poolCursor(poolId)).toBe(3000n);
   });
 });
