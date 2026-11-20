@@ -15,6 +15,9 @@ function StatusMessage({ kind, error, retry }) {
   if (kind === "loading" || kind === "refreshing") {
     return <p className="glidy-api-state"><LoaderCircle size={15} className="glidy-spin" /> {kind === "refreshing" ? "Refreshing launches…" : "Loading launches…"}</p>;
   }
+  if (kind === "indexing") {
+    return <p className="glidy-api-state" role="status"><LoaderCircle size={15} className="glidy-spin" /> Waiting for the launch index to catch up; checking automatically…</p>;
+  }
   if (kind === "error") {
     return (
       <div className="glidy-api-state is-error" role="status">
@@ -29,21 +32,33 @@ function StatusMessage({ kind, error, retry }) {
 function LaunchDetail({ tokenAddress }) {
   const [state, setState] = useState({ kind: "loading" });
   const [retryKey, setRetryKey] = useState(0);
+  const [indexAttempt, setIndexAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([
-      apiGet(`api/v1/launches/${tokenAddress}`, controller.signal),
-      apiGet(`api/v1/launches/${tokenAddress}/events`, controller.signal),
-    ])
-      .then(([launch, events]) => setState({ kind: "ready", launch: launch.data, events: events.data || [] }))
-      .catch((error) => {
-        if (!controller.signal.aborted) setState({ kind: "error", error: error.message || "Launch details are unavailable." });
-      });
-    return () => controller.abort();
-  }, [tokenAddress, retryKey]);
+    let retryTimer;
+    async function load() {
+      try {
+        const launch = await apiGet(`api/v1/launches/${tokenAddress}`, controller.signal);
+        const events = await apiGet(`api/v1/launches/${tokenAddress}/events`, controller.signal);
+        if (!controller.signal.aborted) setState({ kind: "ready", launch: launch.data, events: events.data || [] });
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        if (error.status === 404 && indexAttempt < 24) {
+          setState({ kind: "indexing" });
+          retryTimer = setTimeout(() => setIndexAttempt((attempt) => attempt + 1), 5000);
+          return;
+        }
+        setState({ kind: "error", error: error.status === 404
+          ? "This launch is still not in the index. If it was just created, wait a bit and retry."
+          : error.message || "Launch details are unavailable." });
+      }
+    }
+    void load();
+    return () => { controller.abort(); clearTimeout(retryTimer); };
+  }, [tokenAddress, retryKey, indexAttempt]);
 
-  if (state.kind !== "ready") return <StatusMessage kind={state.kind} error={state.error} retry={() => { setState({ kind: "loading" }); setRetryKey((value) => value + 1); }} />;
+  if (state.kind !== "ready") return <StatusMessage kind={state.kind} error={state.error} retry={() => { setState({ kind: "loading" }); setIndexAttempt(0); setRetryKey((value) => value + 1); }} />;
 
   const launch = state.launch;
   const buy = launch.buy_path || {};
@@ -110,7 +125,7 @@ export function GlidyLaunchDetailPage({ tokenAddress }) {
           <Star size={15} fill={isSaved ? "currentColor" : "none"} /> {isSaved ? "Remove saved" : "Save launch"}
         </button>}
       </div>
-      {/^0x[\da-f]{40}$/i.test(id) ? <LaunchDetail tokenAddress={tokenAddress} /> : <div className="glidy-chain-empty"><span className="glidy-empty-mark">G</span><div><strong>Enter a token address</strong><p>Open a launch from the indexed launches list to view its details.</p></div></div>}
+      {/^0x[\da-f]{40}$/i.test(id) ? <LaunchDetail tokenAddress={tokenAddress} key={id} /> : <div className="glidy-chain-empty"><span className="glidy-empty-mark">G</span><div><strong>Enter a token address</strong><p>Open a launch from the indexed launches list to view its details.</p></div></div>}
     </>
   );
 }
