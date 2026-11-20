@@ -1,19 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import GlidyApp from "../glidy/main.jsx";
 
-async function loadLaunchMetadata(tokenAddress: string) {
+const loadLaunchMetadata = createServerFn({ method: "GET" })
+  .validator((tokenAddress: unknown) =>
+    typeof tokenAddress === "string" && /^0x[\da-f]{40}$/i.test(tokenAddress) ? tokenAddress : null,
+  )
+  .handler(async ({ data: tokenAddress }) => {
+  if (!tokenAddress) return null;
   try {
-    let endpoint: string;
-    const headers: Record<string, string> = { Accept: "application/json" };
-    if (typeof window === "undefined") {
-      const base = process.env["GLIDY_API_BASE_URL"];
-      const key = process.env["MASTER_API_KEY"];
-      if (!base || !key) return null;
-      endpoint = new URL(`/api/v1/launches/${tokenAddress}`, base).toString();
-      headers["Authorization"] = `Bearer ${key}`;
-    } else {
-      endpoint = `/api/glidy/api/v1/launches/${tokenAddress}`;
-    }
+    const base = process.env["GLIDY_API_BASE_URL"];
+    const key = process.env["MASTER_API_KEY"];
+    if (!base || !key) return null;
+    const endpoint = new URL(`/api/v1/launches/${tokenAddress}`, base).toString();
+    const headers = { Accept: "application/json", Authorization: `Bearer ${key}` };
     const response = await fetch(endpoint, { headers, cache: "no-store", signal: AbortSignal.timeout(7000) });
     if (!response.ok) return null;
     const payload = await response.json();
@@ -21,10 +21,10 @@ async function loadLaunchMetadata(tokenAddress: string) {
   } catch {
     return null;
   }
-}
+});
 
 export const Route = createFileRoute("/market/$tokenAddress")({
-  loader: ({ params }) => loadLaunchMetadata(params.tokenAddress),
+  loader: ({ params }) => loadLaunchMetadata({ data: params.tokenAddress }),
   head: ({ loaderData, params }) => {
     const tokenName = loaderData?.token_name || `Token ${params.tokenAddress.slice(0, 6)}…${params.tokenAddress.slice(-4)}`;
     const symbol = loaderData?.token_symbol ? ` ($${loaderData.token_symbol})` : "";
