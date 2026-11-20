@@ -4,7 +4,7 @@ import { Link, useSaved } from "./storage";
 import { WorkspaceNav } from "./WorkspaceNav";
 import { GlidyConnectButton } from "./GlidyWallet";
 
-const routeTitles = { explore: "Launches", watchlist: "Saved launches", launch: "Create a launch", market: "Launch details", docs: "How it works" };
+const routeTitles = { trade: "Trade", explore: "Launches", watchlist: "Saved launches", launch: "Create a launch", market: "Launch details", docs: "How it works" };
 
 export function Workspace({ route, children }) {
   const [collapsed, setCollapsed] = useSaved("glidepath-sidebar-v5", false);

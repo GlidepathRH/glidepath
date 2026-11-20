@@ -380,6 +380,8 @@ components:
         launch_block_timestamp: { $ref: '#/components/schemas/DecimalString' }
         launch_transaction_hash: { $ref: '#/components/schemas/Bytes32' }
         launch_log_index: { type: integer }
+        buy_tax_pips: { type: [integer, 'null'], description: Current buy tax read live from the hook; 1,000,000 pips equals 100%. }
+        sell_tax_pips: { type: [integer, 'null'], description: Current sell tax read live from the hook; 1,000,000 pips equals 100%. }
     TaxPath:
       type: object
       properties:

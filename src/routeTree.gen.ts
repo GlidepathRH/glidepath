@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MarketTokenAddressRouteImport } from './routes/market.$tokenAddress'
 import { Route as ApiGlidySplatRouteImport } from './routes/api/glidy/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketTokenAddressRoute = MarketTokenAddressRouteImport.update({
+  id: '/market/$tokenAddress',
+  path: '/market/$tokenAddress',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGlidySplatRoute = ApiGlidySplatRouteImport.update({
@@ -25,27 +31,31 @@ const ApiGlidySplatRoute = ApiGlidySplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/market/$tokenAddress': typeof MarketTokenAddressRoute
   '/api/glidy/$': typeof ApiGlidySplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/market/$tokenAddress': typeof MarketTokenAddressRoute
   '/api/glidy/$': typeof ApiGlidySplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/market/$tokenAddress': typeof MarketTokenAddressRoute
   '/api/glidy/$': typeof ApiGlidySplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/glidy/$'
+  fullPaths: '/' | '/market/$tokenAddress' | '/api/glidy/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/glidy/$'
-  id: '__root__' | '/' | '/api/glidy/$'
+  to: '/' | '/market/$tokenAddress' | '/api/glidy/$'
+  id: '__root__' | '/' | '/market/$tokenAddress' | '/api/glidy/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MarketTokenAddressRoute: typeof MarketTokenAddressRoute
   ApiGlidySplatRoute: typeof ApiGlidySplatRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/market/$tokenAddress': {
+      id: '/market/$tokenAddress'
+      path: '/market/$tokenAddress'
+      fullPath: '/market/$tokenAddress'
+      preLoaderRoute: typeof MarketTokenAddressRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/glidy/$': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MarketTokenAddressRoute: MarketTokenAddressRoute,
   ApiGlidySplatRoute: ApiGlidySplatRoute,
 }
 export const routeTree = rootRouteImport

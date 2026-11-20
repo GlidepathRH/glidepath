@@ -1,0 +1,52 @@
+.glidy-trade-page { max-width: 920px; margin: 0 auto; }
+.glidy-trade-page > header { margin-bottom: 20px; }
+.glidy-trade-page > header p { margin: 0 0 8px; color: #72668a; font: 10px MatterMono, monospace; letter-spacing: .12em; }
+.glidy-trade-page > header h1 { margin: 0 0 6px; color: #211b2c; font: 500 28px/1.2 Azeret, monospace; }
+.glidy-trade-page > header span { color: #77717f; font-size: 12px; }
+.glidy-trade-panel { position: relative; width: min(100%, 520px); margin: 18px auto; padding: 20px; border: 1px solid #e6e0ec; border-radius: 14px; background: #fff; box-shadow: 0 10px 32px #2d1d4b0a; color: #26202f; }
+.glidy-trade-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; color: #6b5c80; }
+.glidy-trade-title > div { display: grid; gap: 4px; }
+.glidy-trade-title span { color: #51435c; font: 10px MatterMono, monospace; letter-spacing: .1em; }
+.glidy-trade-title small { color: #898190; font: 10px Matter, sans-serif; }
+.glidy-pool-token-picker { display: inline-flex; max-width: 58%; align-items: center; gap: 7px; padding: 5px 9px; border: 1px solid #e5e0eb; border-radius: 22px; background: #fff; color: #433850; font: 500 10px Matter, sans-serif; cursor: pointer; }
+.glidy-pool-token-picker > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.glidy-trade-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 12px; padding: 4px; border-radius: 8px; background: #f5f2f8; }
+.glidy-trade-tabs button { min-height: 34px; border: 0; border-radius: 6px; background: transparent; color: #70677a; font: 500 11px Matter, sans-serif; cursor: pointer; }
+.glidy-trade-tabs button.active { background: #fff; color: #4e3b63; box-shadow: 0 1px 4px #24173512; }
+.glidy-trade-amount { display: grid; gap: 8px; padding: 14px; border: 1px solid #e6e1eb; border-radius: 10px; background: #fff; }
+.glidy-trade-amount > label { color: #81788a; font: 10px MatterMono, monospace; }
+.glidy-trade-amount > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.glidy-trade-amount input { width: min(64%, 260px); min-width: 0; border: 0; outline: 0; background: transparent; color: #241d2d; font: 500 25px/1.2 Azeret, monospace; }
+.glidy-trade-amount input::placeholder { color: #c5bfcc; }
+.glidy-trade-amount strong { min-width: 0; overflow: hidden; color: #241d2d; font: 500 22px/1.2 Azeret, monospace; text-overflow: ellipsis; }
+.glidy-trade-amount > small { color: #918999; font: 10px Matter, sans-serif; }
+.glidy-trade-switch { position: relative; z-index: 1; display: grid; width: 34px; height: 34px; place-items: center; margin: -5px auto; border: 4px solid white; border-radius: 10px; background: #f5f2f8; color: #665776; }
+.glidy-trade-output { background: #faf9fc; }
+.glidy-token-picker-trigger { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 7px; min-height: 36px; padding: 5px 9px; border: 1px solid #e5e0eb; border-radius: 22px; background: white; color: #433850; font: 500 11px Matter, sans-serif; cursor: pointer; }
+.glidy-token-avatar { display: grid; width: 25px; height: 25px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #eee9f5; color: #65527d; font: 600 8px MatterMono, monospace; }
+.glidy-trade-currency { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 7px; color: #433850; font: 500 11px Matter, sans-serif; }
+.glidy-trade-summary { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 15px 2px; color: #82798a; font: 10px Matter, sans-serif; }
+.glidy-trade-summary strong { color: #4b3d59; font: 500 10px MatterMono, monospace; }
+.glidy-trade-summary > div { display: flex; justify-content: flex-end; gap: 4px; }
+.glidy-trade-summary button { min-width: 35px; padding: 5px 7px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #786e83; font: 10px MatterMono, monospace; cursor: pointer; }
+.glidy-trade-summary button[aria-pressed="true"] { border-color: #ddd4e9; background: #f5f1f9; color: #4e3b63; }
+.glidy-trade-submit { display: flex; width: 100%; min-height: 46px; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 9px; background: #5c4777; color: #fff; font: 500 12px Matter, sans-serif; cursor: pointer; }
+.glidy-trade-submit:hover:not(:disabled) { background: #49355f; }
+.glidy-trade-submit:disabled { background: #ebe8ef; color: #8d8695; cursor: not-allowed; }
+.glidy-trade-panel > .glidy-wallet-button { width: 100%; min-height: 46px; justify-content: center; border-radius: 9px; }
+.glidy-trade-error { margin: 0 0 10px; color: #a04455; font: 10px/1.5 Matter, sans-serif; }
+.glidy-token-modal-backdrop { position: fixed; z-index: 11000; inset: 0; display: grid; place-items: center; padding: 18px; background: #17121c80; }
+.glidy-token-modal { width: min(100%, 440px); max-height: min(640px, calc(100dvh - 36px)); overflow: hidden; border: 1px solid #e5deec; border-radius: 14px; background: #fff; box-shadow: 0 24px 90px #15101955; }
+.glidy-token-modal > header { display: flex; align-items: center; justify-content: space-between; padding: 17px 18px; border-bottom: 1px solid #eeeaf1; }
+.glidy-token-modal h2 { margin: 0; color: #282130; font: 500 14px Azeret, monospace; }
+.glidy-token-modal > header button { width: 30px; height: 30px; border: 0; border-radius: 6px; background: #f5f2f8; color: #5e536a; font: 20px/1 Matter, sans-serif; cursor: pointer; }
+.glidy-token-search { display: flex; align-items: center; gap: 8px; margin: 14px 16px; padding: 10px 11px; border: 1px solid #e7e2eb; border-radius: 7px; color: #82798a; }
+.glidy-token-search input { width: 100%; min-width: 0; border: 0; outline: 0; color: #2c2534; font: 11px Matter, sans-serif; }
+.glidy-token-options { max-height: 440px; overflow: auto; padding: 0 8px 10px; }
+.glidy-token-options > button { display: flex; width: 100%; align-items: center; gap: 10px; padding: 10px; border: 0; border-radius: 8px; background: transparent; color: #5e536a; text-align: left; cursor: pointer; }
+.glidy-token-options > button:hover { background: #f7f4fa; }
+.glidy-token-options > button > span:nth-child(2) { display: grid; flex: 1; gap: 4px; min-width: 0; }
+.glidy-token-options strong { overflow: hidden; color: #322a3b; font: 500 11px Matter, sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+.glidy-token-options small { color: #898190; font: 9px MatterMono, monospace; }
+.glidy-token-options > p { padding: 18px 12px; color: #82798a; font: 11px Matter, sans-serif; text-align: center; }
+@media (max-width: 520px) { .glidy-trade-panel { padding: 15px; } .glidy-trade-amount input { font-size: 21px; } .glidy-trade-amount strong { font-size: 18px; } }

@@ -21,11 +21,14 @@ export class IndexerStatus {
     this.#value = { ...this.#value, chainId };
   }
 
-  begin(nextBlock: bigint): void {
+  begin(nextBlock: bigint, indexedThroughBlock?: bigint | null): void {
     this.#value = {
       ...this.#value,
       status: "syncing",
       nextBlock: nextBlock.toString(),
+      ...(indexedThroughBlock !== undefined
+        ? { indexedThroughBlock: indexedThroughBlock?.toString() ?? null }
+        : {}),
       lastError: null,
     };
   }

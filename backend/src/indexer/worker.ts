@@ -282,13 +282,34 @@ export class GlidepathIndexer {
       const end = from + BigInt(this.#rpcLogRange) - 1n < finalizedHead
         ? from + BigInt(this.#rpcLogRange) - 1n
         : finalizedHead;
-      const logs = await this.publicClient.getLogs({
-        address: POOL_MANAGER_ADDRESS,
-        event: poolManagerSwapAbi[0],
-        args: { id: pool.pool_id as `0x${string}` },
-        fromBlock: from,
-        toBlock: end,
-      });
+      const logs: Log[] = [];
+      let logCursor = from;
+      while (logCursor <= end) {
+        const logRange = BigInt(this.#rpcLogRange);
+        const logEnd = logCursor + logRange - 1n < end ? logCursor + logRange - 1n : end;
+        try {
+          logs.push(...await this.publicClient.getLogs({
+            address: POOL_MANAGER_ADDRESS,
+            event: poolManagerSwapAbi[0],
+            args: { id: pool.pool_id as `0x${string}` },
+            fromBlock: logCursor,
+            toBlock: logEnd,
+          }));
+          logCursor = logEnd + 1n;
+        } catch (error) {
+          const providerLimit = rpcRangeLimit(error);
+          if (providerLimit !== null && providerLimit > 0n && providerLimit < BigInt(this.#rpcLogRange)) {
+            const previousRange = this.#rpcLogRange;
+            this.#rpcLogRange = Number(providerLimit);
+            console.warn(JSON.stringify({
+              level: "warn", event: "indexer.rpc_log_range_limited", chainId: config.RHC_CHAIN_ID,
+              previousRange, effectiveRange: this.#rpcLogRange, source: "pool_swaps",
+            }));
+            continue;
+          }
+          throw error;
+        }
+      }
       const timestampByBlock = new Map<string, bigint>();
       const blocks = [...new Set(logs.flatMap((log) => log.blockNumber === null ? [] : [log.blockNumber]))];
       await Promise.all(blocks.map(async (blockNumber) => {
@@ -356,6 +377,10 @@ export class GlidepathIndexer {
       const head = await this.publicClient.getBlockNumber();
       const confirmations = BigInt(config.INDEXER_CONFIRMATIONS);
       const finalizedHead = head > confirmations ? head - confirmations : 0n;
+      indexerStatus.begin(
+        fromBlock,
+        fromBlock > config.RHC_DEPLOYMENT_BLOCK ? fromBlock - 1n : null,
+      );
       stage = "rpc.pool_swaps";
       const swapCount = await this.indexPoolSwaps(client, finalizedHead);
       if (fromBlock > finalizedHead) {

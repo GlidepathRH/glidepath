@@ -19,7 +19,6 @@ export const Route = createRootRoute({
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", type: "image/png", href: "/brand/glidey-soft-eyes-transparent.png" },
-      { rel: "canonical", href: "https://glidy.fun/" },
     ],
   }),
   component: RootDocument,

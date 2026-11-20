@@ -30,7 +30,27 @@ export function createLaunchRouter(db: Pool, publicClient: PublicClient) {
          LIMIT $2`,
         [config.RHC_CHAIN_ID, parsedLimit],
       );
-      response.json({ data: result.rows });
+      const launches = result.rows as Array<Record<string, unknown> & { pool_id: `0x${string}` }>;
+      const taxCalls = launches.flatMap((launch) => ["buyTaxNow", "sellTaxNow"].map((functionName) => ({
+        address: config.GLIDEPATH_HOOK_ADDRESS,
+        abi: hookReadAbi,
+        functionName,
+        args: [launch.pool_id],
+      })));
+      const taxResults = (taxCalls.length
+        ? await publicClient.multicall({
+          contracts: taxCalls as never,
+          allowFailure: true,
+          multicallAddress: "0xca11bde05977b3631167028862be2a173976ca11",
+        })
+        : []) as unknown as Array<{ status: string; result?: unknown }>;
+      response.json({
+        data: launches.map((launch, index) => ({
+          ...launch,
+          buy_tax_pips: taxResults[index * 2]?.status === "success" ? Number(taxResults[index * 2].result) : null,
+          sell_tax_pips: taxResults[index * 2 + 1]?.status === "success" ? Number(taxResults[index * 2 + 1].result) : null,
+        })),
+      });
     } catch {
       response.status(503).json({ error: "launch index is temporarily unavailable" });
     }

@@ -31,7 +31,7 @@ function mockDb({ rows = [], fail = false }: { rows?: Array<Record<string, unkno
 
 async function withRoutes(
   db: ReturnType<typeof mockDb>,
-  chain: { getChainId: () => Promise<number>; readContract?: (args: unknown) => Promise<bigint> },
+  chain: { getChainId: () => Promise<number>; readContract?: (args: unknown) => Promise<bigint>; multicall?: (args: unknown) => Promise<unknown[]> },
   run: (base: string) => Promise<void>,
 ) {
   const app = express();
@@ -74,14 +74,17 @@ describe("readiness and launch routes", () => {
 
   test("validates launch-list limits and returns the database envelope", async () => {
     const db = mockDb({ rows: [{ token_address: TOKEN, token_name: "Test" }] });
-    await withRoutes(db, { getChainId: async () => 4663 }, async (base) => {
+    await withRoutes(db, {
+      getChainId: async () => 4663,
+      multicall: async (args: unknown) => (args as { contracts: unknown[] }).contracts.map(() => ({ status: "success", result: 30_000n })),
+    }, async (base) => {
       for (const limit of ["0", "101", "abc", "1.5"]) {
         const invalid = await fetch(`${base}/api/v1/launches?limit=${limit}`);
         expect(invalid.status).toBe(400);
       }
       const response = await fetch(`${base}/api/v1/launches?limit=10`);
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ data: [{ token_address: TOKEN, token_name: "Test" }] });
+      expect(await response.json()).toEqual({ data: [{ token_address: TOKEN, token_name: "Test", buy_tax_pips: 30_000, sell_tax_pips: 30_000 }] });
       expect(db.calls.at(-1)?.values).toEqual([4663, 10]);
     });
   });

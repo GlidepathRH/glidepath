@@ -5,6 +5,7 @@ import { apiGet, useGlidyApi } from "./GlidyApi";
 import { formatTaxPips as percentFromPips, shortAddress } from "./launch-data.mjs";
 import { GlidyPriceChart } from "./GlidyPriceChart";
 import { useGlidyToast } from "./GlidyToast";
+import { TradePanel } from "./GlidyTrade";
 
 function dateLabel(seconds) {
   const value = Number(seconds);
@@ -86,6 +87,7 @@ function LaunchDetail({ tokenAddress, copied, onCopy }) {
         <article><span>Current sell tax</span><strong>{percentFromPips(launch.sell_tax_pips)}</strong></article>
       </div>
       <GlidyPriceChart tokenAddress={tokenAddress} />
+      <TradePanel initialLaunch={launch} />
       <dl className="glidy-launch-facts">
         <div><dt>Token</dt><dd title={launch.token_address}>{shortAddress(launch.token_address)}</dd></div>
         <div><dt>Creator</dt><dd title={launch.creator_address}>{shortAddress(launch.creator_address)}</dd></div>
