@@ -129,7 +129,7 @@ export function GlidyLaunches({ savedOnly = false }) {
       <>
           <div className="glidy-chain-heading">
             <div>
-              <p className="glidy-api-kicker"><span /> ROBINHOOD CHAIN · 4663</p>
+              <p className="glidy-api-kicker"><span /> ROBINHOOD CHAIN</p>
               <h1 id="glidy-chain-heading">{savedOnly ? "Saved launches" : "GLIDY launches"}</h1>
               <p>{savedOnly ? "Launches you saved in this browser." : "Launches indexed from the GLIDY factory, with current tax data read from the hook."}</p>
             </div>

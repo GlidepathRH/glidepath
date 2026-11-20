@@ -1,30 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, Check, Copy, Plus, Wallet } from "lucide-react";
-import {
-  createPublicClient,
-  createWalletClient,
-  custom,
-  formatEther,
-  getAddress,
-  http,
-  isAddress,
-  parseEventLogs,
-  parseEther,
-} from "viem";
+import { ArrowUpRight, Check, Copy, Plus } from "lucide-react";
+import { formatEther, isAddress, parseEventLogs, parseEther } from "viem";
+import { useAccount, useBalance, usePublicClient, useReadContract, useWalletClient } from "wagmi";
 import factoryAbi from "./chain/factoryAbi.json";
+import { robinhoodChain } from "./GlidyWallet";
 
-const CHAIN_ID = 4663;
-const CHAIN_HEX = "0x1237";
+const CHAIN_ID = robinhoodChain.id;
 const FACTORY = "0x69531E368B9236c2ed7c6da054e8705506c7fA8d";
-const RPC_URL = "https://rpc.mainnet.chain.robinhood.com";
 const EXPLORER = "https://robinhoodchain.blockscout.com";
-const chain = {
-  id: CHAIN_ID,
-  name: "Robinhood Chain",
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: { default: { http: [RPC_URL] } },
-  blockExplorers: { default: { name: "Blockscout", url: EXPLORER } },
-};
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 const initialTax = { start: "3", floor: "1", step: "0.2", hold: "2", interval: "7" };
 
@@ -45,11 +28,13 @@ function AmountField({ label, hint, value, onChange, suffix = "", min = "0" }) {
 }
 
 export function LaunchCreator() {
-  const [address, setAddress] = useState("");
-  const [walletClient, setWalletClient] = useState(null);
-  const [publicClient, setPublicClient] = useState(null);
-  const [balance, setBalance] = useState(null);
-  const [launchFee, setLaunchFee] = useState(null);
+  const { address, chainId, isConnected } = useAccount();
+  const { data: walletClient } = useWalletClient({ chainId: CHAIN_ID });
+  const publicClient = usePublicClient({ chainId: CHAIN_ID });
+  const { data: balanceData } = useBalance({ address, chainId: CHAIN_ID, query: { enabled: Boolean(address) } });
+  const { data: launchFeeData } = useReadContract({ address: FACTORY, abi: factoryAbi, functionName: "launchFee", chainId: CHAIN_ID });
+  const balance = balanceData?.value ?? null;
+  const launchFee = launchFeeData ?? null;
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const [supply, setSupply] = useState("1000000000");
@@ -71,34 +56,6 @@ export function LaunchCreator() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const provider = window.ethereum;
-    if (!provider?.on) return;
-    const accountsChanged = (accounts) => {
-      const next = accounts?.[0] || "";
-      setAddress(next);
-      setCreated(null);
-    };
-    const chainChanged = () => window.location.reload();
-    provider.on("accountsChanged", accountsChanged);
-    provider.on("chainChanged", chainChanged);
-    return () => {
-      provider.removeListener?.("accountsChanged", accountsChanged);
-      provider.removeListener?.("chainChanged", chainChanged);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!address || !window.ethereum) return;
-    const wallet = createWalletClient({ account: address, chain, transport: custom(window.ethereum) });
-    const client = createPublicClient({ chain, transport: http(RPC_URL) });
-    setWalletClient(wallet);
-    setPublicClient(client);
-    client.getBalance({ address }).then(setBalance).catch(() => setBalance(null));
-    client.readContract({ address: FACTORY, abi: factoryAbi, functionName: "launchFee" })
-      .then(setLaunchFee).catch(() => setLaunchFee(null));
-  }, [address]);
-
-  useEffect(() => {
     if (address && !payoutEdited && recipients.length === 1) {
       setRecipients([{ address, percent: "100" }]);
     }
@@ -110,32 +67,9 @@ export function LaunchCreator() {
   }, [liquidityEth, firstBuyBudget, launchFee]);
   const payoutTotal = recipients.reduce((sum, item) => sum + (Number(item.percent) || 0), 0);
 
-  async function connect() {
-    setMessage("");
-    const provider = window.ethereum;
-    if (!provider) { setMessage("Install an EVM wallet such as MetaMask to create a launch."); return; }
-    try {
-      const accounts = await provider.request({ method: "eth_requestAccounts" });
-      const currentChain = await provider.request({ method: "eth_chainId" });
-      if (Number.parseInt(currentChain, 16) !== CHAIN_ID) {
-        try {
-          await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_HEX }] });
-        } catch (switchError) {
-          if (switchError?.code !== 4902) throw switchError;
-          await provider.request({ method: "wallet_addEthereumChain", params: [{
-            chainId: CHAIN_HEX, chainName: chain.name,
-            nativeCurrency: chain.nativeCurrency,
-            rpcUrls: [RPC_URL], blockExplorerUrls: [EXPLORER],
-          }] });
-          await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_HEX }] });
-        }
-      }
-      if (accounts?.[0]) setAddress(getAddress(accounts[0]));
-    } catch (error) { setMessage(error?.shortMessage || error?.message || "Wallet connection failed."); }
-  }
-
   function validate() {
-    if (!address || !walletClient || !publicClient) return "Connect a wallet to continue.";
+    if (!isConnected || !address) return "Connect a wallet from the header to continue.";
+    if (chainId !== CHAIN_ID || !walletClient || !publicClient) return "Switch your wallet to Robinhood Chain using the header button.";
     if (!name.trim() || name.trim().length > 64) return "Enter a token name (up to 64 characters).";
     if (!/^[A-Za-z0-9]{1,10}$/.test(symbol.trim())) return "Ticker must contain 1–10 letters or numbers.";
     let total, liquidity, eth, firstTokens, firstBudget;
@@ -219,7 +153,7 @@ export function LaunchCreator() {
 
   const activeSteps = ["Token and funding", "Tax and shares", "Review and launch"];
   return <div className="launch-designer">
-    <div className="app-heading"><div><p className="eyebrow"><i /> ROBINHOOD CHAIN <span>Factory launch</span></p><h1>Create your launch.</h1><p>Set the token, seed its pool and commit its tax path on-chain.</p></div><div className="button-row"><button className="button" onClick={connect}><Wallet size={15} />{address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "Connect wallet"}</button></div></div>
+    <div className="app-heading"><div><p className="eyebrow"><i /> ROBINHOOD CHAIN <span>Factory launch</span></p><h1>Create your launch.</h1><p>Set the token, seed its pool and commit its tax path on-chain.</p></div></div>
     <div className="launch-steps">{activeSteps.map((label, index) => <button key={label} className={step === index ? "active" : ""} onClick={() => index < step && setStep(index)}><span>0{index + 1}</span><strong>{label}</strong></button>)}</div>
     <div className="launch-grid"><section className="launch-form">
       {step === 0 && <>

@@ -1,5 +1,7 @@
 import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
 import appCss from "../styles.css?url";
+import "@rainbow-me/rainbowkit/styles.css";
+import { GlidyWalletProviders } from "../glidy/GlidyWallet";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -28,7 +30,7 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body>
-        <Outlet />
+        <GlidyWalletProviders><Outlet /></GlidyWalletProviders>
         <Scripts />
       </body>
     </html>

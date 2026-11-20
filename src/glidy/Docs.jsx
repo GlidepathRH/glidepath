@@ -70,7 +70,7 @@ export default function Docs({ page = "overview" }) {
         </nav>
       </aside>
       <article className="glidy-docs-article">
-        <p className="glidy-api-kicker">ROBINHOOD CHAIN · 4663</p>
+        <p className="glidy-api-kicker">ROBINHOOD CHAIN</p>
         <h1>{doc.title}</h1>
         <p className="glidy-docs-intro">{doc.intro}</p>
         {doc.sections.map(([heading, body]) => <section key={heading}><h2>{heading}</h2><p>{body}</p></section>)}

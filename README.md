@@ -14,7 +14,6 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white">
   <img alt="Bun" src="https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white">
   <img alt="TanStack Start" src="https://img.shields.io/badge/TanStack_Start-1.x-FF4154?logo=tanstack&logoColor=white">
-  <img alt="Robinhood Chain 4663" src="https://img.shields.io/badge/Robinhood_Chain-4663-00C805">
 </p>
 
 </div>
@@ -36,7 +35,7 @@
 
 - A creator sets the token supply, quote asset, initial liquidity, buy and sell tax paths, and optional opening protection.
 - The app's wallet launch flow connects to Robinhood Chain and submits the factory transaction. Native ETH is currently the supported quote asset; launch creation requires the creator to approve the funding and gas in their wallet.
-- The factory creates a fixed-supply ERC-20 and initializes its Uniswap v4 pool on Robinhood Chain (chain ID `4663`).
+- The factory creates a fixed-supply ERC-20 and initializes its Uniswap v4 pool on Robinhood Chain.
 - The GLIDY hook applies the pool's configured base fee and current tax. The tax path and creator ceiling can only move down.
 - Creator and platform fee shares accrue as claimable balances.
 - The backend indexes factory and hook events in PostgreSQL. The website reads launches, current hook tax, launch settings, events, and indexer progress through a server-side API proxy.
@@ -61,7 +60,7 @@ pnpm install
 cp .env.example .env
 ```
 
-Set `GLIDY_API_BASE_URL` to a running backend. `MASTER_API_KEY` is a server-only secret required by the API proxy; obtain a development key from the project maintainer or run the backend locally with the same key. Never expose it in a `VITE_*` variable.
+Set `GLIDY_API_BASE_URL` to a running backend. `MASTER_API_KEY` is a server-only secret required by the API proxy; obtain a development key from the project maintainer or run the backend locally with the same key. Never expose it in a `VITE_*` variable. Set `VITE_WALLETCONNECT_PROJECT_ID` to a WalletConnect Cloud project ID to enable WalletConnect QR and mobile wallet connections; injected browser wallets can be used without it.
 
 ```sh
 pnpm dev

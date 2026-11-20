@@ -20,6 +20,7 @@ contracts/deployer-keystore/
 .DS_Store
 /our-progress.md
 /frontend-integration-guide.md
+/glidy-launch-quickstart.md
 /.audit-grade/runs/
 /.solidity-auditor/
 /.audit-grade/
