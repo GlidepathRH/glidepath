@@ -9,6 +9,12 @@
   align-items: center;
   margin-bottom: 27px;
 }
+.workspace .launch-designer .launch-token-image-field { display: flex; align-items: center; gap: 14px; padding: 12px; border: 1px solid #e3ddea; border-radius: 8px; background: #fbf9fc; }
+.workspace .launch-designer .launch-token-image-field > img,
+.workspace .launch-designer .launch-token-image-placeholder { display: grid; width: 72px; height: 72px; flex: 0 0 auto; place-items: center; border-radius: 8px; object-fit: cover; background: linear-gradient(145deg, #f5f2fb, #e7e1f2); color: #65527d; font: 600 20px Azeret, monospace; }
+.workspace .launch-designer .launch-token-image-field > div { display: grid; justify-items: start; gap: 7px; min-width: 0; }
+.workspace .launch-designer .launch-token-image-field input[type="file"] { max-width: 100%; color: #5b5066; font: 10px Matter, sans-serif; }
+.workspace .launch-designer .launch-token-image-field small { color: #81788a; font: 9px/1.5 Matter, sans-serif; overflow-wrap: anywhere; }
 .workspace .launch-designer .app-heading h1 {
   font:
     400 34px/1.25 Azeret,

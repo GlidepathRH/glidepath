@@ -73,6 +73,7 @@ function LaunchDetail({ tokenAddress, copied, onCopy }) {
       <div className="glidy-launch-detail-head">
         <div>
           <div className="glidy-detail-title-row">
+            {launch.image_url && <img className="glidy-launch-token-image" src={launch.image_url} alt={`${launch.token_name} token`} />}
             <h2 id="launch-detail-title">{launch.token_name} <span>${launch.token_symbol}</span></h2>
             <button type="button" className="glidy-detail-action glidy-copy-token" onClick={onCopy} aria-label="Copy token address">
               {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy address"}

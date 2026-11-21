@@ -54,6 +54,17 @@ export function LaunchCreator() {
   const [transaction, setTransaction] = useState(null);
   const [created, setCreated] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [tokenImage, setTokenImage] = useState(null);
+  const [tokenImagePreview, setTokenImagePreview] = useState("");
+  const [imageUploadState, setImageUploadState] = useState("idle");
+  const [imageUploadError, setImageUploadError] = useState("");
+
+  useEffect(() => {
+    if (!tokenImage) { setTokenImagePreview(""); return; }
+    const preview = URL.createObjectURL(tokenImage);
+    setTokenImagePreview(preview);
+    return () => URL.revokeObjectURL(preview);
+  }, [tokenImage]);
 
   useEffect(() => {
     if (address && !payoutEdited && recipients.length === 1) {
@@ -66,6 +77,43 @@ export function LaunchCreator() {
     catch { return null; }
   }, [liquidityEth, firstBuyBudget, launchFee]);
   const payoutTotal = recipients.reduce((sum, item) => sum + (Number(item.percent) || 0), 0);
+
+  async function uploadSelectedImage(tokenAddress, transactionHash) {
+    if (!tokenImage || !walletClient || !address) return;
+    setImageUploadState("uploading");
+    setImageUploadError("");
+    try {
+      const bytes = await tokenImage.arrayBuffer();
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+      const imageSha256 = Array.from(digest, (value) => value.toString(16).padStart(2, "0")).join("");
+      const message = [
+        "GLIDY token image upload",
+        `Chain ID: ${CHAIN_ID}`,
+        `Token: ${tokenAddress.toLowerCase()}`,
+        `Launch transaction: ${transactionHash.toLowerCase()}`,
+        `Image SHA-256: ${imageSha256}`,
+      ].join("\n");
+      const signature = await walletClient.signMessage({ account: address, message });
+      const response = await fetch(`/api/glidy/api/v1/launches/${tokenAddress}/image`, {
+        method: "POST",
+        headers: {
+          "Content-Type": tokenImage.type,
+          "X-Glidy-Creator": address,
+          "X-Glidy-Launch-Tx": transactionHash,
+          "X-Glidy-Image-Signature": signature,
+        },
+        body: bytes,
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Token image could not be saved.");
+      setCreated((current) => current ? { ...current, imageUrl: result.data.image_url } : current);
+      setImageUploadState("saved");
+    } catch (error) {
+      setImageUploadError(error?.shortMessage || error?.message || "Token image upload failed.");
+      setImageUploadState("error");
+    }
+  }
 
   function validate() {
     if (!isConnected || !address) return "Connect a wallet from the header to continue.";
@@ -145,6 +193,7 @@ export function LaunchCreator() {
       if (!event?.args?.token) throw new Error(`Transaction succeeded, but the LaunchCreated event could not be read. View ${EXPLORER}/tx/${hash}`);
       setCreated({ token: event.args.token, poolId: event.args.poolId, hash });
       setTransaction({ hash, status: "confirmed" });
+      if (tokenImage) await uploadSelectedImage(event.args.token, hash);
     } catch (error) {
       setMessage(error?.shortMessage || error?.message || "Launch transaction failed.");
       if (error?.transactionHash) setTransaction({ hash: error.transactionHash, status: "failed" });
@@ -159,6 +208,24 @@ export function LaunchCreator() {
       {step === 0 && <>
         <div className="designer-section-top"><span>01 / TOKEN AND FUNDING</span><span>Robinhood Chain · ETH</span></div><h2>Give your token its starting shape.</h2><p>The factory deploys a fixed-supply token and initializes its GLIDY pool using native ETH.</p>
         <div className="designer-names"><Field label="Token name"><input autoComplete="off" maxLength={64} placeholder="For example, Daylight" value={name} onChange={(event) => setName(event.target.value)} /></Field><Field label="Ticker" hint="1–10 letters or numbers"><input autoComplete="off" maxLength={10} placeholder="DAY" value={symbol} onChange={(event) => setSymbol(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></Field></div>
+        <Field label="Token image" hint="Optional · PNG, JPEG or WebP · up to 2 MB">
+          <div className="launch-token-image-field">
+            {tokenImagePreview ? <img src={tokenImagePreview} alt="Token image preview" /> : <span className="launch-token-image-placeholder">{(symbol || "GL").slice(0, 2).toUpperCase()}</span>}
+            <div><input type="file" accept="image/png,image/jpeg,image/webp" aria-label="Choose token image" onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 2 * 1024 * 1024) {
+                setMessage("Choose a PNG, JPEG or WebP image up to 2 MB.");
+                event.target.value = "";
+                return;
+              }
+              setMessage(""); setImageUploadError(""); setImageUploadState("idle"); setTokenImage(file);
+            }} />
+              <small>{tokenImage ? tokenImage.name : "After launch confirmation, sign a wallet message to attach the image. No extra transaction or gas."}</small>
+              {tokenImage && <button type="button" className="button" onClick={() => { setTokenImage(null); setImageUploadState("idle"); }}>Remove image</button>}
+            </div>
+          </div>
+        </Field>
         <div className="form-two"><AmountField label="Total supply" hint="18 decimals" value={supply} onChange={setSupply} suffix={symbol || "TOKEN"} /><AmountField label="Initial pool tokens" hint="Must be below total supply" value={liquidityTokens} onChange={setLiquidityTokens} suffix={symbol || "TOKEN"} /></div>
         <AmountField label="Initial pool ETH" hint="Your wallet funds the initial liquidity" value={liquidityEth} onChange={setLiquidityEth} suffix="ETH" min="0.000000000000000001" />
         <div className="info-note"><p>Enter the ETH you want to commit to initial liquidity. Pool opening price is calculated from the token and ETH amounts; transaction gas is paid separately by your wallet.</p></div>
@@ -187,7 +254,7 @@ export function LaunchCreator() {
       </>}
       {message && <p className="form-message" role="alert">{message}</p>}
       {transaction && <p className="form-message" role="status">Transaction {transaction.status}: <a href={`${EXPLORER}/tx/${transaction.hash}`} target="_blank" rel="noreferrer">{transaction.hash.slice(0, 12)}…{transaction.hash.slice(-8)} <ArrowUpRight size={13} /></a></p>}
-      {created && <div className="launch-created"><Check size={18} /><div><strong>Launch confirmed on Robinhood Chain.</strong><p>Token <a href={`${EXPLORER}/address/${created.token}`} target="_blank" rel="noreferrer">{created.token}</a></p><p>Pool ID <code>{created.poolId}</code></p><a href={`#/market/${created.token}`} className="inline-link">Open launch details <ArrowUpRight size={13} /></a></div><button className="button" onClick={async () => { await navigator.clipboard.writeText(created.token); setCopied(true); }}><Copy size={14} />{copied ? "Copied" : "Copy token"}</button></div>}
+      {created && <div className="launch-created"><Check size={18} /><div><strong>Launch confirmed on Robinhood Chain.</strong><p>Token <a href={`${EXPLORER}/address/${created.token}`} target="_blank" rel="noreferrer">{created.token}</a></p><p>Pool ID <code>{created.poolId}</code></p>{tokenImage && <p role="status">{imageUploadState === "uploading" ? "Saving token image…" : imageUploadState === "saved" ? "Token image saved." : imageUploadState === "error" ? imageUploadError : "Token image pending."}</p>}{imageUploadState === "error" && <button type="button" className="button" onClick={() => uploadSelectedImage(created.token, created.hash)}>Retry image upload</button>}<a href={`#/market/${created.token}`} className="inline-link">Open launch details <ArrowUpRight size={13} /></a></div><button className="button" onClick={async () => { await navigator.clipboard.writeText(created.token); setCopied(true); }}><Copy size={14} />{copied ? "Copied" : "Copy token"}</button></div>}
       <div className="form-actions">{step > 0 && <button className="button" disabled={busy} onClick={() => { setStep(step - 1); setMessage(""); }}>Back</button>}{step < 2 ? <button className="button dark" onClick={() => { if (step === 0) { if (!name.trim() || !/^[A-Z0-9]{1,10}$/.test(symbol.trim())) { setMessage("Enter a token name and a ticker of 1–10 letters or numbers."); return; } try { if (parseEther(liquidityEth) <= 0n || parseEther(liquidityTokens) >= parseEther(supply)) throw new Error(); } catch { setMessage("Enter a positive ETH amount and keep initial pool tokens below total supply."); return; } } setMessage(""); setStep(step + 1); }}>Continue</button> : <button className="button dark" disabled={busy || !address} onClick={createLaunch}>{busy ? "Waiting for confirmation…" : "Create launch"}<ArrowUpRight size={15} /></button>}</div>
     </section>
     <aside className="launch-preview"><div className="panel"><div className="panel-head"><span>LAUNCH CHECK</span><span className="terminal-dot" /></div><div className="launch-preview-title"><span>FACTORY</span><strong>GLIDY · Robinhood Chain</strong></div><div className="path-stats"><div><strong>{tax.start}%</strong><span>starting tax</span></div><div><strong>{tax.floor}%</strong><span>tax floor</span></div></div><div className="panel-foot"><span>Fixed supply</span><strong>{symbol || "TOKEN"}</strong></div><div className="panel-foot"><span>Quote asset</span><strong>Native ETH</strong></div><div className="panel-foot"><span>Creator share</span><strong>{payoutTotal.toFixed(2)}%</strong></div><div className="panel-foot"><span>Factory address</span><a href={`${EXPLORER}/address/${FACTORY}`} target="_blank" rel="noreferrer">{FACTORY.slice(0, 8)}…{FACTORY.slice(-6)} <ArrowUpRight size={12} /></a></div></div><p className="small-copy">GLIDY factory transaction · token and pool are created together.</p></aside></div>

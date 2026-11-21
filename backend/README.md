@@ -1,10 +1,10 @@
-# Glidepath API
+# GLIDY API
 
-The backend serves a read-only view of Glidepath launches on Robinhood Chain. It indexes factory and hook events into PostgreSQL and reads the current buy/sell tax directly from the hook when a launch is requested. Launch transactions are submitted by the client; this service does not sign or broadcast transactions.
+The backend serves launch data for GLIDY on Robinhood Chain. It indexes factory and hook events into PostgreSQL, reads current buy/sell tax directly from the hook, and accepts creator-authorized token image uploads to Cloudinary. Launch, swap, and signature actions remain wallet-driven by the client.
 
 ## Configuration
 
-Copy `.env.example` to `.env`. Set `DATABASE_URL`, `RHC_RPC_URL`, `MASTER_API_KEY`, and `FRONTEND_URL`. Set `MASTER_API_KEY` to a random secret with at least 32 characters; configure the same value in the hosting provider's environment. All routes except `/health/` require `Authorization: Bearer <MASTER_API_KEY>`. If the key is missing, protected routes fail closed with `503`; the health route remains public. The current chain ID, factory, hook and deployment block are prefilled for the Hydrogen deployment. EVM addresses are validated as 20-byte hex and normalized to checksum casing at startup. The current read-only API does not access or use the treasury private key configured in the local environment.
+Copy `.env.example` to `.env`. Set `DATABASE_URL`, `RHC_RPC_URL`, `MASTER_API_KEY`, and `FRONTEND_URL`. Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_SECRET` in the backend environment to enable token images; never put these values in frontend variables. Set `MASTER_API_KEY` to a random secret with at least 32 characters; configure the same value in the hosting provider's environment. All routes except `/health/` require `Authorization: Bearer <MASTER_API_KEY>`. If the key is missing, protected routes fail closed with `503`; the health route remains public. The current chain ID, factory, hook and deployment block are prefilled for the Hydrogen deployment. EVM addresses are validated as 20-byte hex and normalized to checksum casing at startup.
 
 The indexer waits for `INDEXER_CONFIRMATIONS` blocks, scans up to `INDEXER_BLOCK_RANGE` blocks per poll, and resumes from its PostgreSQL cursor after restart. It indexes factory and hook events, then tracks each launch pool's Uniswap v4 `Swap` events from the configured pool manager into PostgreSQL. The per-pool cursors backfill existing launches as well as new ones. The chart endpoint aggregates those swaps into OHLCV candles; launch price comes from the onchain `LaunchCreated` event. A PostgreSQL advisory lock prevents multiple backend instances from indexing the same range concurrently. Startup, migration, poll progress, RPC range limits and failures are logged as structured JSON; logs omit RPC URLs and credentials.
 
@@ -22,6 +22,7 @@ On the public repository, CI typechecks the backend and builds its Docker image 
 - `GET /api/v1/launches/:tokenAddress` — launch details plus current buy/sell tax in Uniswap pips.
 - `GET /api/v1/launches/:tokenAddress/events` — indexed launch and pool events.
 - `GET /api/v1/launches/:tokenAddress/chart?interval=5m` — pool price candles and ETH volume from indexed swaps (intervals: `5m`, `1h`, `4h`, `1d`).
+- `POST /api/v1/launches/:tokenAddress/image` — store one creator-authorized PNG, JPEG, or WebP image (up to 2 MiB) for a successful launch. The creator signs a message binding its image digest to the token and launch transaction.
 
 All listed routes except `/health/` require the bearer token described above. CORS preflight requests are accepted without credentials; the actual API request must include the bearer token.
 
@@ -42,4 +43,4 @@ bun run test
 bun run check
 ```
 
-The server applies SQL files in `db/migrations/` at startup. The launch tables are created by `001_launch_indexer.sql`; migrations `002_api_auth_rate_limits.sql` and `003_api_client_rate_limits.sql` create the PostgreSQL-backed failed-auth and authenticated-request limits; `004_pool_swaps.sql` adds per-pool swap indexing and chart storage.
+The server applies SQL files in `db/migrations/` at startup. The launch tables are created by `001_launch_indexer.sql`; migrations `002_api_auth_rate_limits.sql` and `003_api_client_rate_limits.sql` create the PostgreSQL-backed failed-auth and authenticated-request limits; `004_pool_swaps.sql` adds per-pool swap indexing and chart storage; `005_launch_token_images.sql` stores image references and creator/transaction attribution.

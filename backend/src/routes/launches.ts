@@ -16,17 +16,20 @@ export function createLaunchRouter(db: Pool, publicClient: PublicClient) {
 
     try {
       const result = await db.query(
-        `SELECT token_address, pool_id, creator_address, quote_currency,
-                token_name, token_symbol, token_decimals, total_supply,
-                liquidity_token_amount, liquidity_quote_amount,
-                creator_first_buy_token_amount, creator_first_buy_quote_amount,
-                sqrt_price_x96, trading_opens_at, buy_path, sell_path,
-                creator_buy_ceiling_pips, creator_sell_ceiling_pips,
-                snipe_config, snipe_ended, payout_recipients,
-                payout_weights_bps, launch_block_number,
-                launch_block_timestamp, launch_transaction_hash
-         FROM launches WHERE chain_id = $1
-         ORDER BY launch_block_number DESC, launch_log_index DESC
+        `SELECT launches.token_address, launches.pool_id, launches.creator_address, launches.quote_currency,
+                launches.token_name, launches.token_symbol, launches.token_decimals, launches.total_supply,
+                launches.liquidity_token_amount, launches.liquidity_quote_amount,
+                launches.creator_first_buy_token_amount, launches.creator_first_buy_quote_amount,
+                launches.sqrt_price_x96, launches.trading_opens_at, launches.buy_path, launches.sell_path,
+                launches.creator_buy_ceiling_pips, launches.creator_sell_ceiling_pips,
+                launches.snipe_config, launches.snipe_ended, launches.payout_recipients,
+                launches.payout_weights_bps, launches.launch_block_number,
+                launches.launch_block_timestamp, launches.launch_transaction_hash,
+                token_images.image_url AS image_url
+         FROM launches LEFT JOIN launch_token_images AS token_images
+           ON token_images.chain_id = launches.chain_id AND token_images.token_address = launches.token_address
+         WHERE launches.chain_id = $1
+         ORDER BY launches.launch_block_number DESC, launches.launch_log_index DESC
          LIMIT $2`,
         [config.RHC_CHAIN_ID, parsedLimit],
       );
@@ -169,7 +172,10 @@ export function createLaunchRouter(db: Pool, publicClient: PublicClient) {
 
     try {
       const launchResult = await db.query(
-        "SELECT * FROM launches WHERE chain_id = $1 AND token_address = $2",
+        `SELECT launches.*, token_images.image_url AS image_url
+         FROM launches LEFT JOIN launch_token_images AS token_images
+           ON token_images.chain_id = launches.chain_id AND token_images.token_address = launches.token_address
+         WHERE launches.chain_id = $1 AND launches.token_address = $2`,
         [config.RHC_CHAIN_ID, getAddress(tokenAddress).toLowerCase()],
       );
       if (!launchResult.rowCount) {

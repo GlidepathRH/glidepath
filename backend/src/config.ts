@@ -16,6 +16,9 @@ const configSchema = z.object({
     z.string().min(32, "must contain at least 32 characters").optional(),
   ),
   FRONTEND_URL: z.preprocess((value) => (value === "" ? undefined : value), z.url().optional()),
+  CLOUDINARY_CLOUD_NAME: z.preprocess((value) => (value === "" ? undefined : value), z.string().trim().min(1).optional()),
+  CLOUDINARY_API_KEY: z.preprocess((value) => (value === "" ? undefined : value), z.string().trim().min(1).optional()),
+  CLOUDINARY_SECRET: z.preprocess((value) => (value === "" ? undefined : value), z.string().min(1).optional()),
   RHC_CHAIN_ID: positiveInteger(4663),
   GLIDEPATH_FACTORY_ADDRESS: nonEmpty
     .refine((value) => isAddress(value, { strict: false }), "must be a 20-byte EVM address")

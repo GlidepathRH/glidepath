@@ -17,7 +17,7 @@ const loadLaunchMetadata = createServerFn({ method: "GET" })
     const response = await fetch(endpoint, { headers, cache: "no-store", signal: AbortSignal.timeout(7000) });
     if (!response.ok) return null;
     const payload = await response.json();
-    return payload.data as { token_name?: string; token_symbol?: string; token_address?: string } | undefined;
+    return payload.data as { token_name?: string; token_symbol?: string; token_address?: string; image_url?: string | null } | undefined;
   } catch {
     return null;
   }
@@ -31,6 +31,7 @@ export const Route = createFileRoute("/market/$tokenAddress")({
     const title = `${tokenName}${symbol} · GLIDY`;
     const description = `View ${tokenName}${symbol} on GLIDY: inspect its live tax path, pool price, and trade directly on Robinhood Chain.`;
     const url = `https://glidy.fun/market/${params.tokenAddress}`;
+    const image = loaderData?.image_url || "https://glidy.fun/brand/glidy-og.svg";
     return {
       meta: [
         { title },
@@ -40,11 +41,11 @@ export const Route = createFileRoute("/market/$tokenAddress")({
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { property: "og:url", content: url },
-        { property: "og:image", content: "https://glidy.fun/brand/glidy-og.svg" },
+        { property: "og:image", content: image },
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },
-        { name: "twitter:image", content: "https://glidy.fun/brand/glidy-og.svg" },
+        { name: "twitter:image", content: image },
       ],
       links: [{ rel: "canonical", href: url }],
     };

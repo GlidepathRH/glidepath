@@ -34,6 +34,7 @@
 ## How it works
 
 - A creator sets the token supply, quote asset, initial liquidity, buy and sell tax paths, and optional opening protection.
+- Creators can attach an optional token image to a confirmed launch. The wallet authorizes the image, and GLIDY stores it through Cloudinary for launch cards and token pages.
 - The app's wallet launch flow connects to Robinhood Chain and submits the factory transaction. Native ETH is currently the supported quote asset; launch creation requires the creator to approve the funding and gas in their wallet.
 - The factory creates a fixed-supply ERC-20 and initializes its Uniswap v4 pool on Robinhood Chain.
 - The GLIDY hook applies the pool's configured base fee and current tax. The tax path and creator ceiling can only move down.

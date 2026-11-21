@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
-  title: Glidepath API
+  title: GLIDY API
   version: 0.1.0
   license:
     name: MIT
     identifier: MIT
   description: >-
-    Read-only API for Glidepath launches on Robinhood Chain. All endpoints except
+    API for GLIDY launches on Robinhood Chain. All endpoints except
     GET /health/ require the configured MASTER_API_KEY as a Bearer token.
 servers:
   - url: https://glidepath-api-mym0.onrender.com
@@ -21,7 +21,7 @@ tags:
   - name: Indexer
     description: Indexing progress for Robinhood Chain.
   - name: Launches
-    description: Read-only launch and event data.
+    description: Launch data and creator-authenticated token image uploads.
 paths:
   /health:
     get:
@@ -178,6 +178,92 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /api/v1/launches/{tokenAddress}/image:
+    parameters:
+      - $ref: '#/components/parameters/TokenAddress'
+    post:
+      tags: [Launches]
+      operationId: uploadLaunchTokenImage
+      summary: Upload the creator's image for a launched token
+      description: >-
+        Accepts a PNG, JPEG, or WebP image up to 2 MiB. The creator signs a message
+        binding the image SHA-256 digest to the chain, token, and successful factory
+        launch transaction. Images are stored in Cloudinary. Each token can have one image.
+      parameters:
+        - name: X-Glidy-Creator
+          in: header
+          required: true
+          schema: { $ref: '#/components/schemas/Address' }
+        - name: X-Glidy-Launch-Tx
+          in: header
+          required: true
+          schema: { $ref: '#/components/schemas/Bytes32' }
+        - name: X-Glidy-Image-Signature
+          in: header
+          required: true
+          schema: { type: string, pattern: '^0x[0-9a-fA-F]+$' }
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema: { type: string, format: binary }
+          image/jpeg:
+            schema: { type: string, format: binary }
+          image/webp:
+            schema: { type: string, format: binary }
+      responses:
+        '201':
+          description: Token image stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [image_url]
+                    properties:
+                      image_url: { type: string, format: uri }
+        '400':
+          description: Invalid image, address, transaction hash, or signature.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: Signature, creator, token, and successful launch transaction do not match.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: This token already has an image.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413':
+          description: Image exceeds the upload limit.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '415':
+          description: Unsupported image format.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: Cloudinary upload failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: Cloudinary is not configured or the rate limiter is unavailable.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '429':
@@ -380,6 +466,7 @@ components:
         launch_block_timestamp: { $ref: '#/components/schemas/DecimalString' }
         launch_transaction_hash: { $ref: '#/components/schemas/Bytes32' }
         launch_log_index: { type: integer }
+        image_url: { type: [string, 'null'], format: uri, description: Optional creator-uploaded token image stored in Cloudinary. }
         buy_tax_pips: { type: [integer, 'null'], description: Current buy tax read live from the hook; 1,000,000 pips equals 100%. }
         sell_tax_pips: { type: [integer, 'null'], description: Current sell tax read live from the hook; 1,000,000 pips equals 100%. }
     TaxPath:

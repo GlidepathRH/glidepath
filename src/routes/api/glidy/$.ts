@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isIP } from "node:net";
-import { isAllowedGlidyReadPath } from "./proxy-policy.mjs";
+import { isAllowedGlidyImageUploadPath, isAllowedGlidyReadPath } from "./proxy-policy.mjs";
 
 function jsonError(status: number, error: string): Response {
   return Response.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
@@ -58,6 +58,54 @@ export const Route = createFileRoute("/api/glidy/$")({
           return new Response(body, {
             status: upstream.status,
             headers,
+          });
+        } catch {
+          return jsonError(503, "Glidy API is temporarily unavailable");
+        }
+      },
+      POST: async ({ request, params }) => {
+        const path = (params._splat ?? "").replace(/^\/+|\/+$/g, "");
+        if (!isAllowedGlidyImageUploadPath(path)) return jsonError(404, "API route not found");
+
+        const contentType = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
+        if (!["image/jpeg", "image/png", "image/webp"].includes(contentType)) {
+          return jsonError(415, "Upload a PNG, JPEG, or WebP image.");
+        }
+        const contentLength = Number(request.headers.get("content-length") ?? "0");
+        if (contentLength > 2 * 1024 * 1024) return jsonError(413, "Token images must be 2 MB or smaller.");
+        const body = await request.arrayBuffer();
+        if (body.byteLength === 0 || body.byteLength > 2 * 1024 * 1024) {
+          return jsonError(413, "Token images must be 2 MB or smaller.");
+        }
+
+        const apiBase = process.env["GLIDY_API_BASE_URL"];
+        const apiKey = process.env["MASTER_API_KEY"];
+        if (!apiBase || !apiKey) return jsonError(503, "Glidy API proxy is not configured");
+        const targetUrl = new URL(path, apiBase.endsWith("/") ? apiBase : `${apiBase}/`);
+        const forwardedFor = request.headers.get("x-vercel-forwarded-for") ?? request.headers.get("x-forwarded-for");
+        const clientIp = forwardedFor?.split(",").map((value) => value.trim()).find((value) => isIP(value));
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": contentType,
+          "X-Glidy-Creator": request.headers.get("x-glidy-creator") ?? "",
+          "X-Glidy-Launch-Tx": request.headers.get("x-glidy-launch-tx") ?? "",
+          "X-Glidy-Image-Signature": request.headers.get("x-glidy-image-signature") ?? "",
+        };
+        if (clientIp) headers["X-Glidy-Client-IP"] = clientIp;
+        try {
+          const upstream = await fetch(targetUrl, {
+            method: "POST",
+            headers,
+            body,
+            signal: AbortSignal.timeout(25_000),
+          });
+          if (upstream.status === 401) return jsonError(503, "Glidy API credentials are not configured correctly");
+          return new Response(await upstream.text(), {
+            status: upstream.status,
+            headers: {
+              "Content-Type": upstream.headers.get("content-type") ?? "application/json",
+              "Cache-Control": "no-store",
+            },
           });
         } catch {
           return jsonError(503, "Glidy API is temporarily unavailable");
