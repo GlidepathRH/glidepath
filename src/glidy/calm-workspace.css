@@ -526,6 +526,24 @@
   background: #eee8f6;
   color: #7a5498;
 }
+.workspace .market-cap-currency {
+  display: flex;
+  gap: 2px;
+  border: 1px solid #e6ddeb;
+  border-radius: 6px;
+  padding: 3px;
+  background: #fff;
+}
+.workspace .market-cap-currency button {
+  min-width: 34px;
+  height: 29px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: #706279;
+  font: 10px MatterMono, monospace;
+}
+.workspace .market-cap-currency button[aria-pressed="true"] { background: #eee8f6; color: #7a5498; }
 .workspace .browse-source {
   display: flex;
   align-items: center;
@@ -861,7 +879,7 @@
 }
 .workspace .real-card-numbers {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 18px;
 }

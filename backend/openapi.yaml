@@ -150,7 +150,7 @@ paths:
                     allOf:
                       - $ref: '#/components/schemas/LaunchSummary'
                       - type: object
-                        required: [chain_id, indexed_at, buy_tax_pips, sell_tax_pips, market_cap_quote_wei, market_cap_quote_symbol]
+                        required: [chain_id, indexed_at, buy_tax_pips, sell_tax_pips, market_cap_quote_wei, market_cap_quote_symbol, market_cap_usd_raw, market_cap_usd_source]
                         properties:
                           chain_id: { type: integer }
                           indexed_at: { type: string, format: date-time }
@@ -166,6 +166,13 @@ paths:
                           market_cap_quote_symbol:
                             type: [string, 'null']
                             description: Quote currency symbol for market_cap_quote_wei; currently ETH for supported pools.
+                          market_cap_usd_raw:
+                            type: [string, 'null']
+                            description: Fully diluted market capitalization in USDG base units (6 decimals), converted using the Robinhood Chain ETH/USDG Uniswap v4 pool spot price. USDG is treated as approximately one US dollar.
+                          market_cap_usd_source:
+                            type: [string, 'null']
+                            enum: [USDG, null]
+                            description: Onchain quote source for the USD estimate.
         '400':
           description: tokenAddress is not a valid EVM address.
           content:
@@ -475,6 +482,10 @@ components:
         image_url: { type: [string, 'null'], format: uri, description: Optional creator-uploaded token image stored in Cloudinary. }
         buy_tax_pips: { type: [integer, 'null'], description: Current buy tax read live from the hook; 1,000,000 pips equals 100%. }
         sell_tax_pips: { type: [integer, 'null'], description: Current sell tax read live from the hook; 1,000,000 pips equals 100%. }
+        market_cap_quote_wei: { type: [string, 'null'], description: Fully diluted market cap in the launch quote currency base units, from live PoolManager spot price and total supply. }
+        market_cap_quote_symbol: { type: [string, 'null'], description: Quote currency symbol for market_cap_quote_wei; currently ETH for supported launches. }
+        market_cap_usd_raw: { type: [string, 'null'], description: Fully diluted market cap in USDG base units, converted from the onchain ETH/USDG pool spot price and treating USDG as approximately one US dollar. }
+        market_cap_usd_source: { type: [string, 'null'], enum: [USDG, null], description: Onchain quote source for the USD estimate. }
     TaxPath:
       type: object
       properties:

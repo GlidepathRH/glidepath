@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Check, Copy, LoaderCircle, RotateCw, Star } from "lucide-react";
 import { Link, useSaved } from "./storage";
 import { apiGet, useGlidyApi } from "./GlidyApi";
-import { formatTaxPips as percentFromPips, shortAddress } from "./launch-data.mjs";
+import { formatMarketCap, formatTaxPips as percentFromPips, shortAddress } from "./launch-data.mjs";
 import { GlidyPriceChart } from "./GlidyPriceChart";
 import { useGlidyToast } from "./GlidyToast";
 import { TradePanel } from "./GlidyTrade";
@@ -12,13 +12,6 @@ function dateLabel(seconds) {
   return Number.isFinite(value) && value > 0
     ? new Date(value * 1000).toLocaleString()
     : "—";
-}
-
-function marketCapLabel(quoteWei, symbol) {
-  if (quoteWei == null || !symbol) return "—";
-  const value = Number(quoteWei) / 1e18;
-  if (!Number.isFinite(value)) return `— ${symbol}`;
-  return `${new Intl.NumberFormat(undefined, { maximumSignificantDigits: 4 }).format(value)} ${symbol}`;
 }
 
 function StatusMessage({ kind, error, retry }) {
@@ -40,6 +33,7 @@ function StatusMessage({ kind, error, retry }) {
 }
 
 function LaunchDetail({ tokenAddress, copied, onCopy }) {
+  const [marketCapCurrency] = useSaved("glidy-market-cap-currency-v1", "ETH");
   const [state, setState] = useState({ kind: "loading" });
   const [retryKey, setRetryKey] = useState(0);
   const [indexAttempt, setIndexAttempt] = useState(0);
@@ -93,7 +87,7 @@ function LaunchDetail({ tokenAddress, copied, onCopy }) {
         <article><span>Current buy tax</span><strong>{percentFromPips(launch.buy_tax_pips)}</strong></article>
         <ArrowDownRight size={18} aria-hidden="true" />
         <article><span>Current sell tax</span><strong>{percentFromPips(launch.sell_tax_pips)}</strong></article>
-        <article><span>Market cap</span><strong>{marketCapLabel(launch.market_cap_quote_wei, launch.market_cap_quote_symbol)}</strong></article>
+        <article title={marketCapCurrency === "USD" ? "USD estimate derived from the Robinhood Chain ETH/USDG pool spot price; assumes USDG is approximately $1." : "ETH spot price multiplied by the token's fixed total supply."}><span>Market cap{marketCapCurrency === "USD" ? " · USDG" : ""}</span><strong>{formatMarketCap(launch.market_cap_quote_wei, launch.market_cap_usd_raw, marketCapCurrency)}</strong></article>
       </div>
       <GlidyPriceChart tokenAddress={tokenAddress} />
       <TradePanel initialLaunch={launch} />

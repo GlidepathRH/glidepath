@@ -9,7 +9,7 @@ process.env.GLIDEPATH_FACTORY_ADDRESS ??= "0x69531E368B9236c2ed7c6da054e8705506c
 process.env.GLIDEPATH_HOOK_ADDRESS ??= "0xd9C3FA83fdeDe47784a9FC62ECf11A4FBd24AaCc";
 process.env.RHC_DEPLOYMENT_BLOCK ??= "1000";
 
-const [{ createReadinessRouter }, { createLaunchRouter, marketCapInQuoteWei }] = await Promise.all([
+const [{ createReadinessRouter }, { createLaunchRouter, marketCapInQuoteWei, marketCapUsdRaw, usdgRawPerEth }] = await Promise.all([
   import("./ready"),
   import("./launches"),
 ]);
@@ -53,6 +53,11 @@ describe("readiness and launch routes", () => {
     const q96 = 1n << 96n;
     expect(marketCapInQuoteWei(1_000_000_000_000_000_000n, q96)).toBe("1000000000000000000");
     expect(marketCapInQuoteWei(1_000_000_000_000_000_000n, 0n)).toBeNull();
+    const sqrtForTwoThousandUsd = BigInt(Math.floor(Math.sqrt(2_000 / 1e12) * Number(q96)));
+    const usdgPerEth = usdgRawPerEth(sqrtForTwoThousandUsd);
+    expect(Number(usdgPerEth) / 1e6).toBeCloseTo(2_000, 3);
+    expect(Number(marketCapUsdRaw("1000000000000000000", usdgPerEth)) / 1e6).toBeCloseTo(2_000, 3);
+    expect(marketCapUsdRaw(null, usdgPerEth)).toBeNull();
   });
   test("readiness checks both the database and expected chain", async () => {
     const db = mockDb();
@@ -78,7 +83,13 @@ describe("readiness and launch routes", () => {
   });
 
   test("validates launch-list limits and returns the database envelope", async () => {
-    const db = mockDb({ rows: [{ token_address: TOKEN, token_name: "Test" }] });
+      const db = mockDb({ rows: [{
+        token_address: TOKEN,
+        token_name: "Test",
+        pool_id: POOL,
+        quote_currency: "0x0000000000000000000000000000000000000001",
+        total_supply: "1000000000000000000",
+      }] });
     await withRoutes(db, {
       getChainId: async () => 4663,
       multicall: async (args: unknown) => (args as { contracts: unknown[] }).contracts.map(() => ({ status: "success", result: 30_000n })),
@@ -89,7 +100,19 @@ describe("readiness and launch routes", () => {
       }
       const response = await fetch(`${base}/api/v1/launches?limit=10`);
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ data: [{ token_address: TOKEN, token_name: "Test", buy_tax_pips: 30_000, sell_tax_pips: 30_000 }] });
+      expect(await response.json()).toEqual({ data: [{
+        token_address: TOKEN,
+        token_name: "Test",
+        pool_id: POOL,
+        quote_currency: "0x0000000000000000000000000000000000000001",
+        total_supply: "1000000000000000000",
+        buy_tax_pips: 30_000,
+        sell_tax_pips: 30_000,
+        market_cap_quote_wei: null,
+        market_cap_quote_symbol: null,
+        market_cap_usd_raw: null,
+        market_cap_usd_source: null,
+      }] });
       expect(db.calls.at(-1)?.values).toEqual([4663, 10]);
     });
   });
@@ -146,18 +169,23 @@ describe("readiness and launch routes", () => {
         const functionName = (args as { functionName: string }).functionName;
         if (functionName === "buyTaxNow") return 30_000n;
         if (functionName === "sellTaxNow") return 20_000n;
-        return BigInt(`0x${(1n << 96n).toString(16).padStart(64, "0")}`);
+        if (readCalls.length === 3) return BigInt(`0x${(1n << 96n).toString(16).padStart(64, "0")}`);
+        const q96 = Number(1n << 96n);
+        const sqrtForTwoThousandUsd = BigInt(Math.floor(Math.sqrt(2_000 / 1e12) * q96));
+        return BigInt(`0x${sqrtForTwoThousandUsd.toString(16).padStart(64, "0")}`);
       },
     };
     await withRoutes(db, chain, async (base) => {
       const response = await fetch(`${base}/api/v1/launches/${TOKEN}`);
       expect(response.status).toBe(200);
-      const payload = await response.json() as { data: { buy_tax_pips: number; sell_tax_pips: number; market_cap_quote_wei: string; market_cap_quote_symbol: string } };
+      const payload = await response.json() as { data: { buy_tax_pips: number; sell_tax_pips: number; market_cap_quote_wei: string; market_cap_quote_symbol: string; market_cap_usd_raw: string; market_cap_usd_source: string } };
       expect(payload.data.buy_tax_pips).toBe(30_000);
       expect(payload.data.sell_tax_pips).toBe(20_000);
       expect(payload.data.market_cap_quote_wei).toBe("1000000000000000000");
       expect(payload.data.market_cap_quote_symbol).toBe("ETH");
-      expect(readCalls).toHaveLength(3);
+      expect(Number(payload.data.market_cap_usd_raw) / 1e6).toBeCloseTo(2_000, 3);
+      expect(payload.data.market_cap_usd_source).toBe("USDG");
+      expect(readCalls).toHaveLength(4);
     });
   });
 });

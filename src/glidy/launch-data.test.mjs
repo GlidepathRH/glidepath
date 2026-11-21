@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { filterAndSortLaunches, formatTaxPips, shortAddress } from "./launch-data.mjs";
+import { filterAndSortLaunches, formatMarketCap, formatTaxPips, shortAddress } from "./launch-data.mjs";
 
 const launches = [
   { token_address: "0x0000000000000000000000000000000000000001", token_name: "Zebra", token_symbol: "ZEB", launch_block_timestamp: "100" },
@@ -13,6 +13,12 @@ test("tax pips use the documented 10,000-pips-per-percent scale", () => {
   assert.equal(formatTaxPips(1_250), "0.13%");
   assert.equal(formatTaxPips("bad"), "—");
   assert.equal(formatTaxPips(null), "—");
+});
+
+test("market cap formatting switches between ETH and USDG-derived USD", () => {
+  assert.equal(formatMarketCap("3500000000000000", "5670000", "ETH"), "0.0035 ETH");
+  assert.equal(formatMarketCap("3500000000000000", "5670000", "USD"), "$5.67");
+  assert.equal(formatMarketCap(null, null, "USD"), "—");
 });
 
 test("shortAddress abbreviates long EVM addresses and handles missing values", () => {

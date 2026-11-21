@@ -6,10 +6,27 @@ import { config } from "../config";
 
 const Q192 = 1n << 192n;
 const SQRT_PRICE_MASK = (1n << 160n) - 1n;
+const ETH_USDG_POOL_ID = "0xa791e5169faf703c0b63fd9552c33ec1128a773a00f5dc33a640da62a022cd35" as const;
+const WEI_PER_ETH = 10n ** 18n;
 
 export function marketCapInQuoteWei(totalSupply: string | bigint, sqrtPriceX96: bigint): string | null {
   if (sqrtPriceX96 <= 0n) return null;
   return ((BigInt(totalSupply) * Q192) / (sqrtPriceX96 * sqrtPriceX96)).toString();
+}
+
+export function usdgRawPerEth(sqrtPriceX96: bigint): string | null {
+  if (sqrtPriceX96 <= 0n) return null;
+  // ETH is currency0 (18 decimals) and USDG is currency1 (6 decimals).
+  return ((sqrtPriceX96 * sqrtPriceX96 * WEI_PER_ETH) / Q192).toString();
+}
+
+export function marketCapUsdRaw(marketCapEthWei: string | null, usdgPerEthRaw: string | null): string | null {
+  if (marketCapEthWei === null || usdgPerEthRaw === null) return null;
+  return ((BigInt(marketCapEthWei) * BigInt(usdgPerEthRaw)) / WEI_PER_ETH).toString();
+}
+
+function sqrtPriceFromSlot(slot0: `0x${string}`): bigint {
+  return BigInt(slot0) & SQRT_PRICE_MASK;
 }
 
 function poolSlot0(poolId: `0x${string}`): `0x${string}` {
@@ -60,12 +77,45 @@ export function createLaunchRouter(db: Pool, publicClient: PublicClient) {
           multicallAddress: "0xca11bde05977b3631167028862be2a173976ca11",
         })
         : []) as unknown as Array<{ status: string; result?: unknown }>;
+      const poolPriceCalls = launches.map((launch) => ({
+        address: config.GLIDEPATH_POOL_MANAGER_ADDRESS,
+        abi: poolManagerStateAbi,
+        functionName: "extsload",
+        args: [poolSlot0(launch.pool_id)],
+      }));
+      poolPriceCalls.push({
+        address: config.GLIDEPATH_POOL_MANAGER_ADDRESS,
+        abi: poolManagerStateAbi,
+        functionName: "extsload",
+        args: [poolSlot0(ETH_USDG_POOL_ID)],
+      });
+      const poolPriceResults = (poolPriceCalls.length
+        ? await publicClient.multicall({
+          contracts: poolPriceCalls as never,
+          allowFailure: true,
+          multicallAddress: "0xca11bde05977b3631167028862be2a173976ca11",
+        }).catch(() => [])
+        : []) as unknown as Array<{ status: string; result?: unknown }>;
+      const ethUsdRaw = poolPriceResults.at(-1)?.status === "success"
+        ? usdgRawPerEth(sqrtPriceFromSlot(poolPriceResults.at(-1)!.result as `0x${string}`))
+        : null;
       response.json({
-        data: launches.map((launch, index) => ({
-          ...launch,
-          buy_tax_pips: taxResults[index * 2]?.status === "success" ? Number(taxResults[index * 2].result) : null,
-          sell_tax_pips: taxResults[index * 2 + 1]?.status === "success" ? Number(taxResults[index * 2 + 1].result) : null,
-        })),
+        data: launches.map((launch, index) => {
+          const quoteIsEth = /^0x0{40}$/i.test(String(launch.quote_currency));
+          const poolPrice = quoteIsEth && poolPriceResults[index]?.status === "success"
+            ? sqrtPriceFromSlot(poolPriceResults[index].result as `0x${string}`)
+            : 0n;
+          const capEth = quoteIsEth && launch.total_supply != null ? marketCapInQuoteWei(String(launch.total_supply), poolPrice) : null;
+          return {
+            ...launch,
+            buy_tax_pips: taxResults[index * 2]?.status === "success" ? Number(taxResults[index * 2].result) : null,
+            sell_tax_pips: taxResults[index * 2 + 1]?.status === "success" ? Number(taxResults[index * 2 + 1].result) : null,
+            market_cap_quote_wei: capEth,
+            market_cap_quote_symbol: quoteIsEth ? "ETH" : null,
+            market_cap_usd_raw: marketCapUsdRaw(capEth, ethUsdRaw),
+            market_cap_usd_source: capEth === null || ethUsdRaw === null ? null : "USDG",
+          };
+        }),
       });
     } catch {
       response.status(503).json({ error: "launch index is temporarily unavailable" });
@@ -211,23 +261,27 @@ export function createLaunchRouter(db: Pool, publicClient: PublicClient) {
         }),
       ]);
       const isNativeEthQuote = /^0x0{40}$/i.test(String((launchResult.rows[0] as { quote_currency: string }).quote_currency));
-      const slot0 = isNativeEthQuote
-        ? await publicClient.readContract({
+      const [poolSlot0Value, ethUsdgSlot0Value] = isNativeEthQuote
+        ? await Promise.all([launch.pool_id, ETH_USDG_POOL_ID].map((poolId) => publicClient.readContract({
           address: config.GLIDEPATH_POOL_MANAGER_ADDRESS,
           abi: poolManagerStateAbi,
           functionName: "extsload",
-          args: [poolSlot0(launch.pool_id)],
-        })
-        : null;
-      const sqrtPriceX96 = slot0 === null ? 0n : BigInt(slot0) & SQRT_PRICE_MASK;
+          args: [poolSlot0(poolId)],
+        })))
+        : [null, null];
+      const sqrtPriceX96 = poolSlot0Value === null ? 0n : sqrtPriceFromSlot(poolSlot0Value);
       const totalSupply = String((launchResult.rows[0] as { total_supply: string | bigint }).total_supply);
+      const capEth = isNativeEthQuote ? marketCapInQuoteWei(totalSupply, sqrtPriceX96) : null;
+      const ethUsdRaw = ethUsdgSlot0Value === null ? null : usdgRawPerEth(sqrtPriceFromSlot(ethUsdgSlot0Value));
       response.json({
         data: {
           ...launchResult.rows[0],
           buy_tax_pips: Number(buyTaxPips),
           sell_tax_pips: Number(sellTaxPips),
-          market_cap_quote_wei: isNativeEthQuote ? marketCapInQuoteWei(totalSupply, sqrtPriceX96) : null,
+          market_cap_quote_wei: capEth,
           market_cap_quote_symbol: isNativeEthQuote ? "ETH" : null,
+          market_cap_usd_raw: marketCapUsdRaw(capEth, ethUsdRaw),
+          market_cap_usd_source: capEth === null || ethUsdRaw === null ? null : "USDG",
         },
       });
     } catch {
