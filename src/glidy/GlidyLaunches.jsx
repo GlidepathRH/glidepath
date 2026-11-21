@@ -14,6 +14,13 @@ function dateLabel(seconds) {
     : "—";
 }
 
+function marketCapLabel(quoteWei, symbol) {
+  if (quoteWei == null || !symbol) return "—";
+  const value = Number(quoteWei) / 1e18;
+  if (!Number.isFinite(value)) return `— ${symbol}`;
+  return `${new Intl.NumberFormat(undefined, { maximumSignificantDigits: 4 }).format(value)} ${symbol}`;
+}
+
 function StatusMessage({ kind, error, retry }) {
   if (kind === "loading" || kind === "refreshing") {
     return <p className="glidy-api-state"><LoaderCircle size={15} className="glidy-spin" /> {kind === "refreshing" ? "Refreshing launches…" : "Loading launches…"}</p>;
@@ -86,6 +93,7 @@ function LaunchDetail({ tokenAddress, copied, onCopy }) {
         <article><span>Current buy tax</span><strong>{percentFromPips(launch.buy_tax_pips)}</strong></article>
         <ArrowDownRight size={18} aria-hidden="true" />
         <article><span>Current sell tax</span><strong>{percentFromPips(launch.sell_tax_pips)}</strong></article>
+        <article><span>Market cap</span><strong>{marketCapLabel(launch.market_cap_quote_wei, launch.market_cap_quote_symbol)}</strong></article>
       </div>
       <GlidyPriceChart tokenAddress={tokenAddress} />
       <TradePanel initialLaunch={launch} />

@@ -95,6 +95,7 @@
 .glidy-chart-retry { position: absolute; top: calc(55% + 25px); left: 50%; padding: 6px 10px; border: 1px solid #ddd5e7; border-radius: 5px; background: white; color: #514687; font: 10px Matter, sans-serif; transform: translateX(-50%); cursor: pointer; }
 .glidy-tax-now { display: flex; align-items: center; gap: 14px; margin: 17px 0; padding: 13px; background: #f7f6fc; color: #6a58c8; }
 .glidy-tax-now article { display: grid; gap: 3px; }
+.glidy-tax-now article:last-child { margin-left: auto; text-align: right; }
 .glidy-tax-now article span { color: #77717f; font-size: 9px; }
 .glidy-tax-now strong { color: #261f35; font: 500 17px Azeret, monospace; }
 .glidy-launch-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; }

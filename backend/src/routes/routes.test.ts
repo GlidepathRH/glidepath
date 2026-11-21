@@ -9,7 +9,7 @@ process.env.GLIDEPATH_FACTORY_ADDRESS ??= "0x69531E368B9236c2ed7c6da054e8705506c
 process.env.GLIDEPATH_HOOK_ADDRESS ??= "0xd9C3FA83fdeDe47784a9FC62ECf11A4FBd24AaCc";
 process.env.RHC_DEPLOYMENT_BLOCK ??= "1000";
 
-const [{ createReadinessRouter }, { createLaunchRouter }] = await Promise.all([
+const [{ createReadinessRouter }, { createLaunchRouter, marketCapInQuoteWei }] = await Promise.all([
   import("./ready"),
   import("./launches"),
 ]);
@@ -49,6 +49,11 @@ async function withRoutes(
 }
 
 describe("readiness and launch routes", () => {
+  test("computes fully diluted quote market cap from fixed supply and pool price", () => {
+    const q96 = 1n << 96n;
+    expect(marketCapInQuoteWei(1_000_000_000_000_000_000n, q96)).toBe("1000000000000000000");
+    expect(marketCapInQuoteWei(1_000_000_000_000_000_000n, 0n)).toBeNull();
+  });
   test("readiness checks both the database and expected chain", async () => {
     const db = mockDb();
     await withRoutes(db, { getChainId: async () => 4663 }, async (base) => {
@@ -126,22 +131,33 @@ describe("readiness and launch routes", () => {
   });
 
   test("detail reads current taxes from the hook instead of stored launch values", async () => {
-    const db = mockDb({ rows: [{ token_address: TOKEN, pool_id: POOL, buy_tax_pips: 99 }] });
+    const db = mockDb({ rows: [{
+      token_address: TOKEN,
+      pool_id: POOL,
+      quote_currency: "0x0000000000000000000000000000000000000000",
+      total_supply: "1000000000000000000",
+      buy_tax_pips: 99,
+    }] });
     const readCalls: unknown[] = [];
     const chain = {
       getChainId: async () => 4663,
       readContract: async (args: unknown) => {
         readCalls.push(args);
-        return readCalls.length === 1 ? 30_000n : 20_000n;
+        const functionName = (args as { functionName: string }).functionName;
+        if (functionName === "buyTaxNow") return 30_000n;
+        if (functionName === "sellTaxNow") return 20_000n;
+        return BigInt(`0x${(1n << 96n).toString(16).padStart(64, "0")}`);
       },
     };
     await withRoutes(db, chain, async (base) => {
       const response = await fetch(`${base}/api/v1/launches/${TOKEN}`);
       expect(response.status).toBe(200);
-      const payload = await response.json() as { data: { buy_tax_pips: number; sell_tax_pips: number } };
+      const payload = await response.json() as { data: { buy_tax_pips: number; sell_tax_pips: number; market_cap_quote_wei: string; market_cap_quote_symbol: string } };
       expect(payload.data.buy_tax_pips).toBe(30_000);
       expect(payload.data.sell_tax_pips).toBe(20_000);
-      expect(readCalls).toHaveLength(2);
+      expect(payload.data.market_cap_quote_wei).toBe("1000000000000000000");
+      expect(payload.data.market_cap_quote_symbol).toBe("ETH");
+      expect(readCalls).toHaveLength(3);
     });
   });
 });

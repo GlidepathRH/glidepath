@@ -1,8 +1,21 @@
 import { Router } from "express";
 import type { Pool } from "pg";
-import { getAddress, isAddress, type PublicClient } from "viem";
-import { hookReadAbi } from "../chain/abi";
+import { encodePacked, getAddress, isAddress, keccak256, type PublicClient } from "viem";
+import { hookReadAbi, poolManagerStateAbi } from "../chain/abi";
 import { config } from "../config";
+
+const Q192 = 1n << 192n;
+const SQRT_PRICE_MASK = (1n << 160n) - 1n;
+
+export function marketCapInQuoteWei(totalSupply: string | bigint, sqrtPriceX96: bigint): string | null {
+  if (sqrtPriceX96 <= 0n) return null;
+  return ((BigInt(totalSupply) * Q192) / (sqrtPriceX96 * sqrtPriceX96)).toString();
+}
+
+function poolSlot0(poolId: `0x${string}`): `0x${string}` {
+  const mappingSlot = `0x${"00".repeat(31)}06` as `0x${string}`;
+  return keccak256(encodePacked(["bytes32", "bytes32"], [poolId, mappingSlot]));
+}
 
 export function createLaunchRouter(db: Pool, publicClient: PublicClient) {
   const router = Router();
@@ -197,11 +210,24 @@ export function createLaunchRouter(db: Pool, publicClient: PublicClient) {
           args: [launch.pool_id],
         }),
       ]);
+      const isNativeEthQuote = /^0x0{40}$/i.test(String((launchResult.rows[0] as { quote_currency: string }).quote_currency));
+      const slot0 = isNativeEthQuote
+        ? await publicClient.readContract({
+          address: config.GLIDEPATH_POOL_MANAGER_ADDRESS,
+          abi: poolManagerStateAbi,
+          functionName: "extsload",
+          args: [poolSlot0(launch.pool_id)],
+        })
+        : null;
+      const sqrtPriceX96 = slot0 === null ? 0n : BigInt(slot0) & SQRT_PRICE_MASK;
+      const totalSupply = String((launchResult.rows[0] as { total_supply: string | bigint }).total_supply);
       response.json({
         data: {
           ...launchResult.rows[0],
           buy_tax_pips: Number(buyTaxPips),
           sell_tax_pips: Number(sellTaxPips),
+          market_cap_quote_wei: isNativeEthQuote ? marketCapInQuoteWei(totalSupply, sqrtPriceX96) : null,
+          market_cap_quote_symbol: isNativeEthQuote ? "ETH" : null,
         },
       });
     } catch {

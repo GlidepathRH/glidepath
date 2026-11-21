@@ -136,10 +136,10 @@ paths:
     get:
       tags: [Launches]
       operationId: getLaunch
-      summary: Get launch details and current hook taxes
+      summary: Get launch details, current hook taxes, and market cap
       responses:
         '200':
-          description: Indexed launch data with taxes read live from the hook.
+          description: Indexed launch data with hook taxes and pool price read live onchain.
           content:
             application/json:
               schema:
@@ -150,7 +150,7 @@ paths:
                     allOf:
                       - $ref: '#/components/schemas/LaunchSummary'
                       - type: object
-                        required: [chain_id, indexed_at, buy_tax_pips, sell_tax_pips]
+                        required: [chain_id, indexed_at, buy_tax_pips, sell_tax_pips, market_cap_quote_wei, market_cap_quote_symbol]
                         properties:
                           chain_id: { type: integer }
                           indexed_at: { type: string, format: date-time }
@@ -160,6 +160,12 @@ paths:
                           sell_tax_pips:
                             type: integer
                             description: Current sell tax; 1,000,000 pips equals 100%.
+                          market_cap_quote_wei:
+                            type: [string, 'null']
+                            description: Fully diluted market capitalization in quote currency base units, calculated from live PoolManager spot price and total supply. Null when the quote asset is unsupported or the pool is uninitialized.
+                          market_cap_quote_symbol:
+                            type: [string, 'null']
+                            description: Quote currency symbol for market_cap_quote_wei; currently ETH for supported pools.
         '400':
           description: tokenAddress is not a valid EVM address.
           content:

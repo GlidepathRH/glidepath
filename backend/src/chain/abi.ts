@@ -4,6 +4,10 @@ export const poolManagerSwapAbi = parseAbi([
   "event Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee)",
 ]);
 
+export const poolManagerStateAbi = parseAbi([
+  "function extsload(bytes32 slot) view returns (bytes32 value)",
+]);
+
 export const indexedEvents = parseAbi([
   "event LaunchCreated(address indexed token, bytes32 indexed poolId, address indexed creator, address quoteCurrency, uint256 totalSupply, uint256 liquidityTokenAmount, uint256 liquidityQuoteAmount, uint256 creatorFirstBuyTokenAmount, uint256 creatorFirstBuyQuoteAmount, uint160 sqrtPriceX96)",
   "event PoolRegistered(bytes32 indexed poolId, address indexed creator, address token, address quoteCurrency)",

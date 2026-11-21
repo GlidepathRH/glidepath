@@ -38,7 +38,7 @@ const docs = {
     intro: "The website uses a same-origin server proxy to read the authenticated backend API. The master API key stays in the server environment and is never sent to browser code.",
     sections: [
       ["Launch list", "GET /api/glidy/api/v1/launches?limit=100 returns indexed GLIDY launches. The limit parameter accepts integers from 1 to 100."],
-      ["Launch detail", "GET /api/glidy/api/v1/launches/{tokenAddress} returns indexed launch settings plus current buy_tax_pips and sell_tax_pips read from the hook. One million pips equals 100%."],
+      ["Launch detail", "GET /api/glidy/api/v1/launches/{tokenAddress} returns indexed launch settings, current buy_tax_pips and sell_tax_pips read from the hook, and market_cap_quote_wei read from the live pool spot price and fixed token supply. Market cap is fully diluted and denominated in the quote asset (ETH for current launches). One million pips equals 100% tax."],
       ["Pool events", "GET /api/glidy/api/v1/launches/{tokenAddress}/events returns up to 200 indexed launch and pool events, newest first."],
       ["Indexer and readiness", "GET /api/glidy/api/v1/indexer reports indexer status and indexed block progress. GET /api/glidy/ready checks the backend database and Robinhood Chain RPC."],
       ["Responses and limits", "Launch data is returned in a { data: ... } envelope. Token amounts and block numbers are decimal strings; preserve them as strings or BigInt. Authenticated requests are limited by client IP. On HTTP 429, retry after the number of seconds in the Retry-After header."],
